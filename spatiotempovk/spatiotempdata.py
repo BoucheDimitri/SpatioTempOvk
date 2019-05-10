@@ -142,3 +142,4 @@ class SpatioTempData:
             return sum(self.Ms[:t]) + m
         else:
             raise IndexError('Location out of bound for time {}'.format(t))
+

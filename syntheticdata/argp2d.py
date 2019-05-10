@@ -61,13 +61,8 @@ def draw_observations(nobs, argp):
         obs.append((X, Y))
     return obs
 
-
-argp = draw_ar1_gp2d()
-
-obs = draw_observations(20, argp)
-
-fig, axes = plt.subplots(2, 2)
-axes[0, 0].imshow(argp[0])
-axes[0, 1].imshow(argp[1])
-axes[1, 0].imshow(argp[2])
-axes[1, 1].imshow(argp[3])
+# fig, axes = plt.subplots(2, 2)
+# axes[0, 0].imshow(argp[0])
+# axes[0, 1].imshow(argp[1])
+# axes[1, 0].imshow(argp[2])
+# axes[1, 1].imshow(argp[3])
