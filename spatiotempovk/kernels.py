@@ -25,52 +25,42 @@ class Kernel:
     def compute_Knew(self, X, Xnew):
         n = len(X)
         m = len(Xnew)
-        Knew = np.zeros((n, m))
-        for i in range(n):
-            for j in range(m):
+        Knew = np.zeros((m, n))
+        for i in range(m):
+            for j in range(n):
                 Knew[i, j] = self(Xnew[i], X[j])
         return Knew
 
 
-class ConvKernel:
+class ConvKernel(Kernel):
 
     def __init__(self, kernelx, kernely, storeK=True):
+        super(ConvKernel, self).__init__(storeK)
         self.storeK = storeK
         self.K = None
         self.kernelx = kernelx
         self.kernely = kernely
 
-    # def __call__(self, s0=None, s1=None, index0=None, index1=None, Kspace=None, Kmeasures=None):
-    #     Kx = None
-    #     Ky = None
-    #     if index0 is not None and index1 is not None and Kspace is not None:
-    #         Kx = Kspace[index0, :][:, index1]
-    #     if index0 is not None and index1 is not None and Kmeasures is not None:
-    #         Ky = Kmeasures[index0, :][:, index1]
-    #     # if Kx is None and s0 is not None and s1 is not None:
-    #     #     Kx = self.kernelx.compute_Knew(s0[0], s1[0])
-    #     # else:
-    #     #     raise Exception("Either s0 and s1 or index0, index1 and Kspace should be passed")
-    #     # if Ky is None and s0 is not None and s1 is not None:
-    #     #     Ky = self.kernely.compute_Knew(s0[1], s1[1])
-    #     # else:
-    #     #     raise Exception("Either s0 and s1 or index0, index1 and Kmeasures should be passed")
-    #     return np.sum(Kx * Ky)
-
-    def __call__(self, index0, index1, Kspace, Kmeasures):
-        Kx = Kspace[index0, :][:, index1]
-        Ky = Kmeasures[index0, :][:, index1]
+    def __call__(self, s0, s1):
+        Kx = self.kernelx.compute_Knew(s0[0], s1[0])
+        Ky = self.kernely.compute_Knew(s0[1], s1[1])
         return np.mean(Kx * Ky)
 
-    def compute_K(self, Spt, Kspace, Kmeasures):
-        K = np.zeros((Spt.T, Spt.T))
-        for i in range(Spt.T):
-            for j in range(i, Spt.T):
-                index0 = range(Spt.flat_index(i, 0), Spt.flat_index(i, Spt.Ms[i]))
-                index1 = range(Spt.flat_index(j, 0), Spt.flat_index(j, Spt.Ms[j]))
-                k = self(index0=index0, index1=index1, Kspace=Kspace, Kmeasures=Kmeasures)
-                K[i, j] = k
-                K[j, i] = k
+    def from_mat(self, index0, index1):
+        return np.mean(self.kernelx.K[index0, :][:, index1] * self.kernely.K[index0, :][:, index1])
+
+    def compute_K_from_mat(self, Ms):
+        T = len(Ms)
+        K = np.zeros((T, T))
+        for t0 in range(T):
+            for t1 in range(t0, T):
+                tm0 = sum(Ms[:t0])
+                tm1 = sum(Ms[:t1])
+                index0 = range(tm0, tm0 + Ms[t0])
+                index1 = range(tm1, tm1 + Ms[t1])
+                k = self.from_mat(index0, index1)
+                K[t0, t1] = k
+                K[t1, t0] = k
         if self.storeK:
             self.K = K
         return K

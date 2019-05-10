@@ -1,6 +1,13 @@
 import numpy as np
 
 
+class SpatioTempFuncRidge:
+
+    def __init__(self, mu, lamb):
+        self.mu = mu
+        self.lamb = lamb
+
+
 class PredictFunc:
 
     def __init__(self, alpha, mu, lamb):

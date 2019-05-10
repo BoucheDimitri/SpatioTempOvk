@@ -143,3 +143,6 @@ class SpatioTempData:
         else:
             raise IndexError('Location out of bound for time {}'.format(t))
 
+    def get_Ms(self):
+        return self.Ms.copy()
+
