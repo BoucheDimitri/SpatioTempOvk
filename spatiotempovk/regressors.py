@@ -60,9 +60,47 @@ class DiffSpatioTempRegressor:
 
     @staticmethod
     def eval(alpha, kx, ks):
+        """
+        Prediction function
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        kx: np.ndarray
+            Kernel comparison between new location and all training location kx.shape = (barM, )
+        ks: np.ndarray
+            Kernel comparison between new sample and all training samples, ks.shape = (T, )
+
+        Returns
+        -------
+        F: float
+            prediction at time T+1 for location x
+        """
         return ks.T.dot(alpha).dot(kx)
 
     def data_fitting(self, alpha, Ms, y, Kx, Ks):
+        """
+        Compute data fitting term
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        xi: float
+            evaluation of the datafitting term in alpha
+        """
         xi = 0
         T = Ks.shape[0]
         for t in range(T):
@@ -74,8 +112,29 @@ class DiffSpatioTempRegressor:
         return (1 / T) * xi
 
     def data_fitting_prime(self, alpha, Ms, y, Kx, Ks):
-        xi_prime = np.zeros(alpha.shape)
+        """
+        Gradient of data fitting term
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        grad_xi: float
+            gradient of data fitting term evaluated in alpha
+        """
         T = Ks.shape[0]
+        xi_prime = np.zeros(alpha.shape)
         for t in range(T):
             for m in range(Ms[t]):
                 tm = sum(Ms[:t]) + m
@@ -85,11 +144,51 @@ class DiffSpatioTempRegressor:
         return (1 / T) * xi_prime
 
     def objective(self, alpha, Ms, y, Kx, Ks):
+        """
+        Complet objective function
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        obj_eval: float
+            value of the full objective in alpha
+        """
         return self.data_fitting(alpha, Ms, y, Kx, Ks) \
                + self.mu * self.spacereg(alpha, Kx, Ks) \
                + self.lamb * self.timereg(alpha, Kx, Ks)
 
     def objective_func(self, Ms, y, Kx, Ks):
+        """
+        Fix all parameters but alpha to optimize the objective function
+
+        Parameters
+        ----------
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        obj: function
+            objective function
+        """
         MT = Kx.shape[0]
         T = Ks.shape[0]
 
@@ -100,11 +199,52 @@ class DiffSpatioTempRegressor:
         return obj
 
     def objective_prime(self, alpha, Ms, y, Kx, Ks):
+        """
+        Gradient of the objective function
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+
+        obj: function
+            objective function as a function of only alpha
+        """
         return self.data_fitting_prime(alpha, Ms, y, Kx, Ks) \
                + self.mu * self.spacereg.prime(alpha, Kx, Ks) \
                + self.lamb * self.timereg.prime(alpha, Kx, Ks)
 
     def objective_grad_func(self, Ms, y, Kx, Ks):
+        """
+        Fix all parameters but alpha to in the objective gradient for optimization
+
+        Parameters
+        ----------
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        grad: function
+            gradient of objective function as a function of only alpha
+        """
         MT = Kx.shape[0]
         T = Ks.shape[0]
 
@@ -130,16 +270,3 @@ class DiffSpatioTempRegressor:
         Kxnew = self.kernelx.compute_Knew(self.S["x_flat"], Xnew)
         Ksnew = self.kernels.compute_Knew(self.S["xy_tuple"], Slast["xy_tuple"])
         return Ksnew.T.dot(self.alpha).dot(Kxnew)
-
-
-
-    #
-    # def fit(self, Ms, y, Kx, Ks, solver='L-BFGS-B', tol=1e-5):
-    #     alpha0 = np.zeros((Kx.shape[0] * Ks.shape[0]))
-    #     obj = self.objective_func(Ms, y, Kx, Ks)
-    #     grad = self.objective_func(Ms, y, Kx, Ks)
-    #     sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
-    #     self.alpha = sol["x"]
-    #
-    # def predict(self, s):
-    #     ks = self.kernels()

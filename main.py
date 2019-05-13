@@ -19,7 +19,7 @@ importlib.reload(argp2d)
 
 # Create synthetic data
 argp = argp2d.draw_ar1_gp2d()
-obs = argp2d.draw_observations(20, argp)
+obs = argp2d.draw_observations(200, argp)
 nx, ny = argp[0].shape
 
 # Store this data in a SpatioTempData class instance
@@ -33,8 +33,8 @@ gausskerx = kernels.GaussianKernel(sigma=10)
 gausskery = kernels.GaussianKernel(sigma=0.2)
 
 # Compute kernel matrices
-Kx = gausskerx.compute_K(data["x"])
-Ky = gausskery.compute_K(data["y"])
+Kx = gausskerx.compute_K(data["x_flat"])
+Ky = gausskery.compute_K(data["y_flat"])
 convkers = kernels.ConvKernel(gausskerx, gausskery, Kx, Ky)
 
 # Compute convolution kernel matrix
@@ -46,30 +46,12 @@ loss = losses.L2Loss()
 # Define regularizers and regularization params
 spacereg = regularizers.TikhonovSpace()
 timereg = regularizers.TikhonovTime()
-mu = 1
-lamb = 1
-
-# Initialize alpha
-alpha0 = np.random.normal(0, 1, (T, barM))
-
-# Define regressor for problem
-regressor = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
-
-# Test for the regressor's functions
-regressor.data_fitting(alpha0, Ms, data["y"], Kx, Ks)
-regressor.spacereg(alpha0, Kx, Ks)
-regressor.timereg(alpha0, Kx, Ks)
-regressor.data_fitting_prime(alpha0, Ms, data["y"], Kx, Ks)
-regressor.objective(alpha0, Ms, data["y"], Kx, Ks)
-regressor.objective_prime(alpha0, Ms, data["y"], Kx, Ks)
-
-
-obj = regressor.objective_func(Ms, data["y"], Kx, Ks)
-grad = regressor.objective_grad_func(Ms, data["y"], Kx, Ks)
+mu = 10000
+lamb = 0.000001
 
 # Train/Test split
 Strain = data.extract_subseq(0, 4)
-Stest = data.extract_subseq(4, 5)
+Stest = data.extract_subseq(3, 4)
 
 # Initialize and train regressor
 reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
