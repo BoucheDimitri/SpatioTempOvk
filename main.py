@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import importlib
 import scipy.optimize as optimize
+import itertools
 
 import spatiotempovk.spatiotempdata as spatiotemp
 import spatiotempovk.kernels as kernels
@@ -19,6 +20,7 @@ importlib.reload(argp2d)
 # Create synthetic data
 argp = argp2d.draw_ar1_gp2d()
 obs = argp2d.draw_observations(20, argp)
+nx, ny = argp[0].shape
 
 # Store this data in a SpatioTempData class instance
 data = spatiotemp.SpatioTempData(obs)
@@ -65,6 +67,20 @@ regressor.objective_prime(alpha0, Ms, data["y"], Kx, Ks)
 obj = regressor.objective_func(Ms, data["y"], Kx, Ks)
 grad = regressor.objective_grad_func(Ms, data["y"], Kx, Ks)
 
+# Train/Test split
+Strain = data.extract_subseq(0, 4)
+Stest = data.extract_subseq(4, 5)
+
+# Initialize and train regressor
+reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+reg.fit(Strain)
+
+# Predict at new locations
+Xnew = np.array(list(itertools.product(range(nx), range(ny))))
+Ypred = reg.predict(Stest, Xnew)
+Ypred = Ypred.reshape((50, 50))
+
+
 
 
 def gradient_descent(alpha0, obj, grad, nu, maxit, eps):
@@ -99,3 +115,6 @@ alpha0 = np.zeros((T, barM))
 sol = optimize.minimize(fun=obj, x0=alpha0.flatten(), jac=grad, method='L-BFGS-B', tol=1e-5)
 
 
+#
+Strain = data.extract_subseq(0, 4)
+Stest = data.extract_subseq(4, 5)

@@ -43,7 +43,8 @@ class DiffSpatioTempRegressor:
         Convolutional kernel between a kernelx and a kernel comparing measurements
     alpha: numpy.ndarray
         Optimal parameter set when fitted
-
+    S: spatiotempovk.spatiotempdata.SpatioTempData
+        Training data
     """
 
     def __init__(self, loss, spacereg, timereg, mu, lamb, kernelx, kernels):
@@ -55,9 +56,10 @@ class DiffSpatioTempRegressor:
         self.kernelx = kernelx
         self.kernels = kernels
         self.alpha = None
+        self.S = None
 
     @staticmethod
-    def predict(alpha, kx, ks):
+    def eval(alpha, kx, ks):
         return ks.T.dot(alpha).dot(kx)
 
     def data_fitting(self, alpha, Ms, y, Kx, Ks):
@@ -67,7 +69,7 @@ class DiffSpatioTempRegressor:
             xit = 0
             for m in range(Ms[t]):
                 tm = sum(Ms[:t]) + m
-                xit += self.loss(y[tm], DiffSpatioTempRegressor.predict(alpha, Kx[tm], Ks[t]))
+                xit += self.loss(y[tm], DiffSpatioTempRegressor.eval(alpha, Kx[tm], Ks[t]))
             xi += (1 / Ms[t]) * xit
         return (1 / T) * xi
 
@@ -79,7 +81,7 @@ class DiffSpatioTempRegressor:
                 tm = sum(Ms[:t]) + m
                 k = Ks[t].reshape((Ks.shape[0], 1)).dot(Kx[tm].reshape((1, Kx.shape[0])))
                 xi_prime += (1 / Ms[t]) * self.loss.prime(y[tm],
-                                                          DiffSpatioTempRegressor.predict(alpha, Kx[tm], Ks[t])) * k
+                                                          DiffSpatioTempRegressor.eval(alpha, Kx[tm], Ks[t])) * k
         return (1 / T) * xi_prime
 
     def objective(self, alpha, Ms, y, Kx, Ks):
@@ -112,11 +114,32 @@ class DiffSpatioTempRegressor:
 
         return grad
 
-    def fit(self, Ms, y, Kx, Ks, solver='L-BFGS-B', tol=1e-5):
-        alpha0 = np.zeros((Kx.shape[0] * Ks.shape[0]))
-        obj = self.objective_func(Ms, y, Kx, Ks)
-        grad = self.objective_func(Ms, y, Kx, Ks)
+    def fit(self, S, solver='L-BFGS-B', tol=1e-5, Kx=None, Ks=None):
+        self.S = S
+        if Kx is None:
+            Kx = self.kernelx.compute_K(S["x_flat"])
+        if Ks is None:
+            Ks = self.kernels.compute_K(S["xy_tuple"])
+        alpha0 = np.zeros(S.get_T() * S.get_barM())
+        obj = self.objective_func(S.get_Ms(), S["y_flat"], Kx, Ks)
+        grad = self.objective_grad_func(S.get_Ms(), S["y_flat"], Kx, Ks)
         sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
-        self.alpha = sol["x"]
+        self.alpha = sol["x"].reshape((S.get_T(), S.get_barM()))
 
-    def predict(self):
+    def predict(self, Slast, Xnew):
+        Kxnew = self.kernelx.compute_Knew(self.S["x_flat"], Xnew)
+        Ksnew = self.kernels.compute_Knew(self.S["xy_tuple"], Slast["xy_tuple"])
+        return Ksnew.T.dot(self.alpha).dot(Kxnew)
+
+
+
+    #
+    # def fit(self, Ms, y, Kx, Ks, solver='L-BFGS-B', tol=1e-5):
+    #     alpha0 = np.zeros((Kx.shape[0] * Ks.shape[0]))
+    #     obj = self.objective_func(Ms, y, Kx, Ks)
+    #     grad = self.objective_func(Ms, y, Kx, Ks)
+    #     sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
+    #     self.alpha = sol["x"]
+    #
+    # def predict(self, s):
+    #     ks = self.kernels()

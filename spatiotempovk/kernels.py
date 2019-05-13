@@ -26,7 +26,7 @@ class Kernel:
         for i in range(m):
             for j in range(n):
                 Knew[i, j] = self(Xnew[i], X[j])
-        return Knew
+        return Knew.T
 
 
 class ConvKernel(Kernel):

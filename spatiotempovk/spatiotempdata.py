@@ -35,29 +35,43 @@ class SpatioTempData:
         # Concatenate all time observations if no other key is specified
         if not isinstance(key, tuple):
             if key == "x":
-                return np.concatenate([self.X[t] for t in range(self.T)])
+                return [self.X[t] for t in range(self.T)]
             elif key == "y":
+                return [self.Y[t] for t in range(self.T)]
+            elif key == "xy":
+                return [self.X[t] for t in range(self.T)], [self.Y[t] for t in range(self.T)]
+            elif key == "x_flat":
+                return np.concatenate([self.X[t] for t in range(self.T)])
+            elif key == "y_flat":
                 return np.concatenate([self.Y[t] for t in range(self.T)])
-            else:
+            elif key == "xy_flat":
                 return np.concatenate([self.X[t] for t in range(self.T)]), np.concatenate([self.Y[t] for t in range(self.T)])
+            elif key == "xy_tuple":
+                return [(self.X[t], self.Y[t]) for t in range(self.T)]
+            else:
+                raise KeyError("Key must be within ['x', 'y', 'xy', 'x_flat', 'y_flat', 'xy_flat', 'xy_tuple']")
         # Second key corresponds to time, return data at all locations for a given time t
         # First key keeps its role (either "x", "y" or :)
         elif len(key) == 2:
-            if key[0] == "x":
+            if key[0] == "x" or "x_flat":
                 return self.X[key[1]]
-            elif key[0] == "y":
+            elif key[0] == "y" or "y_flat":
                 return self.Y[key[1]]
-            else:
+            elif key[0] == "xy" or "xy_flat" or "xy_tuple":
                 return self.X[key[1]], self.Y[key[1]]
+            else:
+                raise KeyError("Key must be within ['x', 'y', 'xy', 'x_flat', 'y_flat', 'xy_flat', 'xy_tuple']")
         # Third key corresponds to location
         # First and second key keeps their role
         elif len(key) == 3:
-            if key[0] == "x":
+            if key[0] == "x" or "x_flat":
                 return self.X[key[1]][key[2]]
-            elif key[0] == "y":
+            elif key[0] == "y" or "y_flat":
                 return self.Y[key[1]][key[2]]
-            else:
+            elif key[0] == "xy" or "xy_flat" or "xy_tuple":
                 return self.X[key[1]][key[2]], self.Y[key[1]][key[2]]
+            else:
+                raise KeyError("Key must be within ['x', 'y', 'xy', 'x_flat', 'y_flat', 'xy_flat', 'xy_tuple']")
 
     @classmethod
     def new_instance(cls, S):
