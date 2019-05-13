@@ -3,9 +3,8 @@ import numpy as np
 
 class Kernel:
 
-    def __init__(self, storeK=True):
-        self.storeK = storeK
-        self.K = None
+    def __init__(self):
+        pass
 
     def __call__(self, x0, x1):
         pass
@@ -18,8 +17,6 @@ class Kernel:
                 k = self(X[i], X[j])
                 K[i, j] = k
                 K[j, i] = k
-        if self.storeK:
-            self.K = K
         return K
 
     def compute_Knew(self, X, Xnew):
@@ -34,12 +31,12 @@ class Kernel:
 
 class ConvKernel(Kernel):
 
-    def __init__(self, kernelx, kernely, storeK=True):
-        super(ConvKernel, self).__init__(storeK)
-        self.storeK = storeK
-        self.K = None
+    def __init__(self, kernelx, kernely, Kx, Ky):
+        super(ConvKernel, self).__init__()
         self.kernelx = kernelx
+        self.Kx = Kx
         self.kernely = kernely
+        self.Ky = Ky
 
     def __call__(self, s0, s1):
         Kx = self.kernelx.compute_Knew(s0[0], s1[0])
@@ -47,7 +44,7 @@ class ConvKernel(Kernel):
         return np.mean(Kx * Ky)
 
     def from_mat(self, index0, index1):
-        return np.mean(self.kernelx.K[index0, :][:, index1] * self.kernely.K[index0, :][:, index1])
+        return np.mean(self.Kx[index0, :][:, index1] * self.Ky[index0, :][:, index1])
 
     def compute_K_from_mat(self, Ms):
         T = len(Ms)
@@ -61,15 +58,13 @@ class ConvKernel(Kernel):
                 k = self.from_mat(index0, index1)
                 K[t0, t1] = k
                 K[t1, t0] = k
-        if self.storeK:
-            self.K = K
         return K
 
 
 class GaussianKernel(Kernel):
 
-    def __init__(self, sigma, storeK=True):
-        super(GaussianKernel, self).__init__(storeK)
+    def __init__(self, sigma):
+        super(GaussianKernel, self).__init__()
         self.sigma = sigma
 
     def __call__(self, x0, x1):

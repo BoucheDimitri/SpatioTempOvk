@@ -146,3 +146,9 @@ class SpatioTempData:
     def get_Ms(self):
         return self.Ms.copy()
 
+    def get_barM(self):
+        return sum(self.Ms)
+
+    def get_T(self):
+        return len(self.Ms)
+

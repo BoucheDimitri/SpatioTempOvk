@@ -59,8 +59,8 @@ class TikhonovTime(DoubleRepresenterRegularizer):
 
     def __call__(self, alpha, Kx, Ks):
         A = TikhonovTime.compute_A(alpha, Kx)
-        np.sum(Ks * A)
+        return np.sum(Ks * A)
 
     def prime(self, alpha, Kx, Ks):
-        2 * Ks.dot(alpha).dot(Kx)
+        return 2 * Ks.dot(alpha).dot(Kx)
 
