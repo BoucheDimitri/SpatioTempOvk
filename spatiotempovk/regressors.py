@@ -4,6 +4,48 @@ import scipy.optimize as optimize
 
 class DiffSpatioTempRegressor:
 
+    """
+    Class for spatio temporal regressor which contain only differentiable terms
+
+    Parameters
+    ----------
+    loss: spatiotempovk.losses.DiffLoss
+        Loss chosen for data fitting term
+    spacereg: spatiotempovk.regularizers.DoubleRepresenterRegularizer
+        Regularization chosen for space
+    timereg: spatiotempovk.regularizers.DoubleRepresenterRegularizer
+        Regularization chosen for time
+    mu: float
+        Regularization parameter for space regularization
+    lamb: float
+        Regularization parameter for time regularization
+    kernelx: spatiotempovk.kernels.Kernel
+        Kernel to compare locations
+    kernels: spatiotempovk.kernels.ConvKernel
+        Convolutional kernel between a kernelx and a kernel comparing measurements
+
+
+    Attributes
+    ----------
+    loss: spatiotempovk.losses.DiffLoss
+        Loss chosen for data fitting term
+    spacereg: spatiotempovk.regularizers.DoubleRepresenterRegularizer
+        Regularization chosen for space
+    timereg: spatiotempovk.regularizers.DoubleRepresenterRegularizer
+        Regularization chosen for time
+    mu: float
+        Regularization parameter for space regularization
+    lamb: float
+        Regularization parameter for time regularization
+    kernelx: spatiotempovk.kernels.Kernel
+        Kernel to compare locations
+    kernels: spatiotempovk.kernels.ConvKernel
+        Convolutional kernel between a kernelx and a kernel comparing measurements
+    alpha: numpy.ndarray
+        Optimal parameter set when fitted
+
+    """
+
     def __init__(self, loss, spacereg, timereg, mu, lamb, kernelx, kernels):
         self.loss = loss
         self.spacereg = spacereg
@@ -66,7 +108,15 @@ class DiffSpatioTempRegressor:
 
         def grad(alpha):
             alpha_res = alpha.reshape((T, MT))
-            return self.objective_prime(alpha_res, Ms, y, Kx, Ks)
+            return self.objective_prime(alpha_res, Ms, y, Kx, Ks).flatten()
 
         return grad
 
+    def fit(self, Ms, y, Kx, Ks, solver='L-BFGS-B', tol=1e-5):
+        alpha0 = np.zeros((Kx.shape[0] * Ks.shape[0]))
+        obj = self.objective_func(Ms, y, Kx, Ks)
+        grad = self.objective_func(Ms, y, Kx, Ks)
+        sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
+        self.alpha = sol["x"]
+
+    def predict(self):

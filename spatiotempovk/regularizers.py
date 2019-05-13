@@ -3,6 +3,15 @@ import numpy as np
 
 class DoubleRepresenterRegularizer:
 
+    """
+    Parameters
+    ----------
+
+
+    Attributes
+    ----------
+    """
+
     def __init__(self):
         pass
 

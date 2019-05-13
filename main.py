@@ -48,50 +48,54 @@ mu = 1
 lamb = 1
 
 # Initialize alpha
-alpha = np.random.normal(0, 1, (T, barM))
+alpha0 = np.random.normal(0, 1, (T, barM))
 
 # Define regressor for problem
 regressor = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
 
 # Test for the regressor's functions
-regressor.data_fitting(alpha, Ms, data["y"], Kx, Ks)
-regressor.spacereg(alpha, Kx, Ks)
-regressor.timereg(alpha, Kx, Ks)
-regressor.data_fitting_prime(alpha, Ms, data["y"], Kx, Ks)
-regressor.objective(alpha, Ms, data["y"], Kx, Ks)
-regressor.objective_prime(alpha, Ms, data["y"], Kx, Ks)
+regressor.data_fitting(alpha0, Ms, data["y"], Kx, Ks)
+regressor.spacereg(alpha0, Kx, Ks)
+regressor.timereg(alpha0, Kx, Ks)
+regressor.data_fitting_prime(alpha0, Ms, data["y"], Kx, Ks)
+regressor.objective(alpha0, Ms, data["y"], Kx, Ks)
+regressor.objective_prime(alpha0, Ms, data["y"], Kx, Ks)
+
+
+obj = regressor.objective_func(Ms, data["y"], Kx, Ks)
+grad = regressor.objective_grad_func(Ms, data["y"], Kx, Ks)
 
 
 
-# obj = learning.get_objective_func(loss_l2, Ms, y, Kx, Ks, mu, lamb)
-# grad = learning.get_gradient_func(loss_l2_prime, Ms, y, Kx, Ks, mu, lamb)
+def gradient_descent(alpha0, obj, grad, nu, maxit, eps):
+    it = 0
+    gradnorms = []
+    objs = []
+    evalgrad = grad(alpha0)
+    evalobj = obj(alpha0)
+    gradnorm = np.linalg.norm(evalgrad)
+    gradnorms.append(gradnorm)
+    objs.append(evalobj)
+    alpha = alpha0.copy()
+    while (it < maxit) and (gradnorm > eps):
+        alpha -= nu * evalgrad
+        evalgrad = grad(alpha)
+        evalobj = obj(alpha)
+        gradnorm = np.linalg.norm(evalgrad)
+        gradnorms.append(gradnorm)
+        objs.append(evalobj)
+        it += 1
+        print(it)
+    return alpha, gradnorms, objs
+
+nu = 0.1
+maxit = 1000
+eps = 1e-3
+alpha, gn, ob = gradient_descent(alpha0, obj, grad, nu, maxit, eps)
 #
-#
-# def gradient_descent(alpha0, obj, grad, nu, maxit, eps):
-#     it = 0
-#     gradnorms = []
-#     objs = []
-#     evalgrad = grad(alpha0)
-#     evalobj = obj(alpha0)
-#     gradnorm = np.linalg.norm(evalgrad)
-#     gradnorms.append(gradnorm)
-#     objs.append(evalobj)
-#     alpha = alpha0.copy()
-#     while (it < maxit) and (gradnorm > eps):
-#         alpha -= nu * evalgrad
-#         evalgrad = grad(alpha)
-#         evalobj = obj(alpha)
-#         gradnorm = np.linalg.norm(evalgrad)
-#         gradnorms.append(gradnorm)
-#         objs.append(evalobj)
-#         it += 1
-#         print(it)
-#     return alpha, gradnorms, objs
-#
-# nu = 0.1
-# maxit = 1000
-# eps = 1e-3
-# alpha, gn, ob = gradient_descent(alpha, obj, grad, nu, maxit, eps)
-#
-# sol = optimize.minimize(fun=obj, x0=alpha, jac=grad, method='L-BFGS-B')
+
+# Initialize alpha
+alpha0 = np.zeros((T, barM))
+sol = optimize.minimize(fun=obj, x0=alpha0.flatten(), jac=grad, method='L-BFGS-B', tol=1e-5)
+
 
