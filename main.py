@@ -64,39 +64,39 @@ Ypred = Ypred.reshape((50, 50))
 
 
 
-
-def gradient_descent(alpha0, obj, grad, nu, maxit, eps):
-    it = 0
-    gradnorms = []
-    objs = []
-    evalgrad = grad(alpha0)
-    evalobj = obj(alpha0)
-    gradnorm = np.linalg.norm(evalgrad)
-    gradnorms.append(gradnorm)
-    objs.append(evalobj)
-    alpha = alpha0.copy()
-    while (it < maxit) and (gradnorm > eps):
-        alpha -= nu * evalgrad
-        evalgrad = grad(alpha)
-        evalobj = obj(alpha)
-        gradnorm = np.linalg.norm(evalgrad)
-        gradnorms.append(gradnorm)
-        objs.append(evalobj)
-        it += 1
-        print(it)
-    return alpha, gradnorms, objs
-
-nu = 0.1
-maxit = 1000
-eps = 1e-3
-alpha, gn, ob = gradient_descent(alpha0, obj, grad, nu, maxit, eps)
 #
-
-# Initialize alpha
-alpha0 = np.zeros((T, barM))
-sol = optimize.minimize(fun=obj, x0=alpha0.flatten(), jac=grad, method='L-BFGS-B', tol=1e-5)
-
-
+# def gradient_descent(alpha0, obj, grad, nu, maxit, eps):
+#     it = 0
+#     gradnorms = []
+#     objs = []
+#     evalgrad = grad(alpha0)
+#     evalobj = obj(alpha0)
+#     gradnorm = np.linalg.norm(evalgrad)
+#     gradnorms.append(gradnorm)
+#     objs.append(evalobj)
+#     alpha = alpha0.copy()
+#     while (it < maxit) and (gradnorm > eps):
+#         alpha -= nu * evalgrad
+#         evalgrad = grad(alpha)
+#         evalobj = obj(alpha)
+#         gradnorm = np.linalg.norm(evalgrad)
+#         gradnorms.append(gradnorm)
+#         objs.append(evalobj)
+#         it += 1
+#         print(it)
+#     return alpha, gradnorms, objs
 #
-Strain = data.extract_subseq(0, 4)
-Stest = data.extract_subseq(4, 5)
+# nu = 0.1
+# maxit = 1000
+# eps = 1e-3
+# alpha, gn, ob = gradient_descent(alpha0, obj, grad, nu, maxit, eps)
+# #
+#
+# # Initialize alpha
+# alpha0 = np.zeros((T, barM))
+# sol = optimize.minimize(fun=obj, x0=alpha0.flatten(), jac=grad, method='L-BFGS-B', tol=1e-5)
+#
+#
+# #
+# Strain = data.extract_subseq(0, 4)
+# Stest = data.extract_subseq(4, 5)

@@ -1,4 +1,5 @@
 import numpy as np
+from geopy import distance
 
 
 class Kernel:
@@ -31,6 +32,33 @@ class Kernel:
 
 class ConvKernel(Kernel):
 
+    """
+    One layer convolutional kernel
+
+    Parameters
+    ----------
+    kernelx: spatiotempovk.kernels.Kernel
+        kernel for space
+    kernely: spatiotempovk.kernels.Kernel
+        kernel for measurements
+    Kx: numpy.ndarray
+        Kernel matrix associated with kernelx on the training dataset
+    Ky: numpy.ndarray
+        Kernel matrix associated with kernely on the training dataset
+
+    Attributes
+    ----------
+    kernelx: spatiotempovk.kernels.Kernel
+        kernel for space
+    kernely: spatiotempovk.kernels.Kernel
+        kernel for measurements
+    Kx: numpy.ndarray
+        Kernel matrix associated with kernelx on the training dataset
+    Ky: numpy.ndarray
+        Kernel matrix associated with kernely on the training dataset
+
+    """
+
     def __init__(self, kernelx, kernely, Kx, Ky):
         super(ConvKernel, self).__init__()
         self.kernelx = kernelx
@@ -62,10 +90,46 @@ class ConvKernel(Kernel):
 
 
 class GaussianKernel(Kernel):
+    """
+    Gaussian kernel
 
+    Parameters
+    ----------
+    sigma: float
+        bandwidth parameter of the kernel
+
+    Attributes
+    ----------
+    sigma: float
+        bandwidth parameter of the kernel
+    """
     def __init__(self, sigma):
         super(GaussianKernel, self).__init__()
         self.sigma = sigma
 
     def __call__(self, x0, x1):
         return np.exp(- ((np.linalg.norm(x0 - x1)) ** 2) / (2 * self.sigma ** 2))
+
+
+class GaussianGeoKernel(Kernel):
+    """
+    Gaussian kernel when distances are in geographic coordinates
+
+    Parameters
+    ----------
+    sigma: float
+        bandwidth parameter of the kernel
+
+    Attributes
+    ----------
+    sigma: float
+        bandwidth parameter of the kernel
+
+    """
+    def __init__(self, sigma):
+        super(GaussianGeoKernel, self).__init__()
+        self.sigma = sigma
+
+    def __call__(self, x0, x1):
+        dist = distance.geodesic(x0, x1).km
+        return np.exp(- (dist ** 2) / (2 * self.sigma ** 2))
