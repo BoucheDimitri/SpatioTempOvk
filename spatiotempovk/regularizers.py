@@ -4,12 +4,7 @@ import numpy as np
 class DoubleRepresenterRegularizer:
 
     """
-    Parameters
-    ----------
-
-
-    Attributes
-    ----------
+    Abstract class for regularization terms for functions parametrized using 2 representer theorems
     """
 
     def __init__(self):
@@ -33,6 +28,7 @@ class TikhonovSpace(DoubleRepresenterRegularizer):
         A = np.zeros((T, T))
         for t0 in range(T):
             for t1 in range(t0, T):
+                # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
                 a = alpha[t0, :].dot(Kx.dot(alpha[t1, :].T))
                 A[t0, t1] = a
                 A[t1, t0] = a
@@ -47,6 +43,7 @@ class TikhonovSpace(DoubleRepresenterRegularizer):
         return (1 / T) * reg
 
     def prime(self, alpha, Kx, Ks):
+        # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
         return (2 / Ks.shape[0]) * Ks.T.dot(Ks).dot((Kx.dot(alpha.T)).T)
 
 
@@ -61,6 +58,7 @@ class TikhonovTime(DoubleRepresenterRegularizer):
         A = np.zeros((T, T))
         for t0 in range(T):
             for t1 in range(t0, T):
+                # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
                 a = alpha[t0, :].dot(Kx.dot(alpha[t1, :].T))
                 A[t0, t1] = a
                 A[t1, t0] = a
@@ -71,5 +69,6 @@ class TikhonovTime(DoubleRepresenterRegularizer):
         return np.sum(Ks * A)
 
     def prime(self, alpha, Kx, Ks):
+        # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
         return 2 * Ks.dot((Kx.dot(alpha.T)).T)
 

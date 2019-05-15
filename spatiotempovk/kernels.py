@@ -53,10 +53,12 @@ class ConvKernel(Kernel):
     kernely: spatiotempovk.kernels.Kernel
         kernel for measurements
     Kx: numpy.ndarray
-        Kernel matrix associated with kernelx on the training dataset
-    Ky: numpy.ndarray
+        Kernel matrix associated with kernelx on the training dataset, if sameloc is true should be the kernel
+        matrix for the locations at which the measures are done at each time
+    Ky: numpy.ndarray or NoneType
         Kernel matrix associated with kernely on the training dataset
-
+    sameloc: bool
+        Are the measurements always made at the same locations
     """
 
     def __init__(self, kernelx, kernely, Kx, Ky=None, sameloc=False):

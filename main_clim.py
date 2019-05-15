@@ -32,6 +32,16 @@ datapd["DATE"] = pd.to_datetime(datapd["YEAR"].astype(str) + "/" + datapd["MONTH
 # Sort by DATE first, then LAT then LONG
 datapd_sorted = datapd.sort_values(by=["DATE", "LAT", "LONG"])
 
+# Deseasonalize
+datapd_sorted["MONTH_LAT_LONG"] = [(datapd_sorted.iloc[o, 1], datapd_sorted.iloc[o, 2], datapd_sorted.iloc[o, 3]) for o in range(datapd_sorted.shape[0])]
+datapd_sorted["LAT_LONG"] = [(datapd_sorted.iloc[o, 2], datapd_sorted.iloc[o, 3]) for o in range(datapd_sorted.shape[0])]
+locs = datapd_sorted["LAT_LONG"].unique()
+for loc in locs:
+    for month in range(1, 13):
+        avg = datapd_sorted.loc[datapd_sorted["MONTH_LAT_LONG"] == (month, loc[0], loc[1]), "TMP"].mean()
+        datapd_sorted.loc[datapd_sorted["MONTH_LAT_LONG"] == (month, loc[0], loc[1]), "TMP"] -= avg
+
+
 # Dates contained in the data
 dates = pd.unique(datapd_sorted["DATE"])
 
@@ -43,9 +53,9 @@ extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values
 data = spatiotemp.SpatioTempData(extract)
 
 # Train test data
-Strain = data.extract_subseq(0, 8)
-Slast = data.extract_subseq(7, 8)
-Stest = data.extract_subseq(8, 9)
+Strain = data.extract_subseq(0, 100)
+Slast = data.extract_subseq(99, 100)
+Stest = data.extract_subseq(100, 101)
 Ms = Strain.get_Ms()
 
 
@@ -74,7 +84,7 @@ lamb = 1
 
 # Initialize and train regressor
 reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
-reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (8, 8)))
+reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (100, 100)))
 
 # Predict at new locations
 # Xnew = np.array(list(itertools.product(range(nx), range(ny))))
@@ -82,7 +92,7 @@ Xnew = Strain["x_flat"][:125, :]
 Ypred = reg.predict(Slast, Xnew)
 
 
-########## NOT EXPLOITING SAME LOCATION ################################################################################
+# ######### NOT EXPLOITING SAME LOCATION ###############################################################################
 # Kernels
 gausskerx = kernels.GaussianGeoKernel(sigma=1000)
 gausskery = kernels.GaussianKernel(sigma=15)
@@ -114,8 +124,11 @@ Xnew = Strain["x_flat"][:125, :]
 Ypred = reg.predict(Slast, Xnew)
 
 
+# ################################ LOOK AT SEASONALITY PATTERN #########################################################
 
-
+y0 = [y[0] for y in Strain["y"]]
+plt.figure()
+plt.plot(y0)
 
 
 

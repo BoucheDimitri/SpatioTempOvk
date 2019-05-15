@@ -47,6 +47,9 @@ class DiffSpatioTempRegressor:
         Optimal parameter set when fitted
     S: spatiotempovk.spatiotempdata.SpatioTempData
         Training data
+    sameloc: bool
+        Will be inherited from S attribute, whether computation acceleration using the fact that locations
+        are always the same should be used
     """
 
     def __init__(self, loss, spacereg, timereg, mu, lamb, kernelx, kernels):
@@ -258,12 +261,24 @@ class DiffSpatioTempRegressor:
         return grad
 
     def fit(self, S, solver='L-BFGS-B', tol=1e-5, Kx=None, Ks=None):
+        """
+        Fit regressor
+
+        Parameters
+        ----------
+        S: spatiotempovk.spatiotempdata.SpatioTempData
+            The data to fit the regressor on
+
+        """
         self.S = S
+        # Inherits sameloc flag from the data it is fitted on
+        # if sameloc is true it is exploited to speed up computations
         if self.S.sameloc:
             self.sameloc = True
         else:
             self.sameloc = False
         if Kx is None:
+            # Exploit sameloc=True by using the RepSymMatrix container to avoid storing a huge redundant matrix
             if self.sameloc:
                 Kx = repmat.RepSymMatrix(self.kernelx.compute_K(S["x"][0]), rep=(S.get_T(), S.get_T()))
             else:
@@ -277,10 +292,11 @@ class DiffSpatioTempRegressor:
         self.alpha = sol["x"].reshape((S.get_T(), S.get_barM()))
 
     def predict(self, Slast, Xnew):
+        # Exploit sameloc=True by using the RepSymMatrix container to avoid storing a huge redundant matrix
         if self.sameloc:
             Kxnew = repmat.RepSymMatrix(self.kernelx.compute_K(self.S["x"][0]), rep=(self.S.get_T(), 1))
         else:
             Kxnew = self.kernelx.compute_Knew(self.S["x_flat"], Xnew)
         Ksnew = self.kernels.compute_Knew(self.S["xy_tuple"], Slast["xy_tuple"])
-        # return Ksnew.T.dot(self.alpha).dot(Kxnew)
+        # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
         return (Kxnew.transpose().dot(self.alpha.T).dot(Ksnew)).T
