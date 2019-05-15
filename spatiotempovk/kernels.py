@@ -59,20 +59,27 @@ class ConvKernel(Kernel):
 
     """
 
-    def __init__(self, kernelx, kernely, Kx, Ky):
+    def __init__(self, kernelx, kernely, Kx, Ky=None, sameloc=False):
         super(ConvKernel, self).__init__()
         self.kernelx = kernelx
         self.Kx = Kx
         self.kernely = kernely
         self.Ky = Ky
+        self.sameloc = sameloc
 
     def __call__(self, s0, s1):
-        Kx = self.kernelx.compute_Knew(s0[0], s1[0])
+        if not self.sameloc:
+            Kx = self.kernelx.compute_Knew(s0[0], s1[0])
+        else:
+            Kx = self.Kx
         Ky = self.kernely.compute_Knew(s0[1], s1[1])
         return np.mean(Kx * Ky)
 
     def from_mat(self, index0, index1):
-        return np.mean(self.Kx[index0, :][:, index1] * self.Ky[index0, :][:, index1])
+        if not self.sameloc:
+            return np.mean(self.Kx[index0, :][:, index1] * self.Ky[index0, :][:, index1])
+        else:
+            return np.mean(self.Kx * self.Ky[index0, :][:, index1])
 
     def compute_K_from_mat(self, Ms):
         T = len(Ms)

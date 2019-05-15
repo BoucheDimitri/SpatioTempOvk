@@ -11,6 +11,8 @@ import spatiotempovk.kernels as kernels
 import spatiotempovk.losses as losses
 import spatiotempovk.regularizers as regularizers
 import spatiotempovk.regressors as regressors
+import algebra.repeated_matrix as repmat
+importlib.reload(repmat)
 importlib.reload(spatiotemp)
 importlib.reload(kernels)
 importlib.reload(losses)
@@ -39,3 +41,125 @@ extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values
 
 # Create a SpatioTempData object from it
 data = spatiotemp.SpatioTempData(extract)
+
+# Train test data
+Strain = data.extract_subseq(0, 8)
+Slast = data.extract_subseq(7, 8)
+Stest = data.extract_subseq(8, 9)
+Ms = Strain.get_Ms()
+
+
+# ############# EXPLOITING SAME LOCATION #####################################################################
+# Kernels
+gausskerx = kernels.GaussianGeoKernel(sigma=1000)
+gausskery = kernels.GaussianKernel(sigma=15)
+Kx = gausskerx.compute_K(Strain["x_flat"][:125])
+# Ky = gausskery.compute_K(Strain["y_flat"])
+# Kx = gausskerx.compute_K(Strain["x_flat"])
+Ky = None
+convkers = kernels.ConvKernel(gausskerx, gausskery, Kx, Ky, sameloc=True)
+
+# Compute convolution kernel matrix
+# Ks = convkers.compute_K_from_mat(Ms)
+Ks = convkers.compute_K(Strain["xy_tuple"])
+
+# Define loss
+loss = losses.L2Loss()
+
+# Define regularizers and regularization params
+spacereg = regularizers.TikhonovSpace()
+timereg = regularizers.TikhonovTime()
+mu = 1
+lamb = 1
+
+# Initialize and train regressor
+reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (8, 8)))
+
+# Predict at new locations
+# Xnew = np.array(list(itertools.product(range(nx), range(ny))))
+Xnew = Strain["x_flat"][:125, :]
+Ypred = reg.predict(Slast, Xnew)
+
+
+########## NOT EXPLOITING SAME LOCATION ################################################################################
+# Kernels
+gausskerx = kernels.GaussianGeoKernel(sigma=1000)
+gausskery = kernels.GaussianKernel(sigma=15)
+Ky = gausskery.compute_K(Strain["y_flat"])
+Kx = gausskerx.compute_K(Strain["x_flat"])
+convkers = kernels.ConvKernel(gausskerx, gausskery, Kx, Ky, sameloc=False)
+
+# Compute convolution kernel matrix
+Ks = convkers.compute_K_from_mat(Ms)
+
+# Define loss
+loss = losses.L2Loss()
+
+# Define regularizers and regularization params
+spacereg = regularizers.TikhonovSpace()
+timereg = regularizers.TikhonovTime()
+mu = 1
+lamb = 1
+
+# Initialize and train regressor
+reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+# Force not same loc processing
+Strain.sameloc = False
+reg.fit(Strain, Ks=Ks, Kx=Kx)
+
+# Predict at new locations
+# Xnew = np.array(list(itertools.product(range(nx), range(ny))))
+Xnew = Strain["x_flat"][:125, :]
+Ypred = reg.predict(Slast, Xnew)
+
+
+
+
+
+
+
+#
+#
+# Ms = datasmall.get_Ms()
+# T = datasmall.get_T()
+# barM = datasmall.get_barM()
+#
+# # Kernels for convolution
+# gausskerx = kernels.GaussianGeoKernel(sigma=1000)
+# gausskery = kernels.GaussianKernel(sigma=15)
+#
+# # Compute kernel matrices
+# Kx = gausskerx.compute_K(datasmall["x_flat"][:125, :])
+# Ky = gausskery.compute_K(datasmall["y_flat"])
+# convkers = kernels.ConvKernel(gausskerx, gausskery, Kx, Ky, sameloc=True)
+#
+# Kx = repmat.RepSymMatrix(Kx, rep=(20, 20))
+#
+# # Compute convolution kernel matrix
+# Ks = convkers.compute_K_from_mat(Ms)
+#
+# # Define loss
+# loss = losses.L2Loss()
+#
+# # Define regularizers and regularization params
+# spacereg = regularizers.TikhonovSpace()
+# timereg = regularizers.TikhonovTime()
+# mu = 1
+# lamb = 1
+#
+# # Train/Test split
+# Strain = data.extract_subseq(0, 4)
+# Stest = data.extract_subseq(3, 4)
+#
+# # Initialize and train regressor
+# reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+#
+# reg.objective_func(datasmall.Ms, )
+# reg.fit(datasmall, Kx=Kx, Ks=Ks)
+#
+# # Predict at new locations
+# Xnew = np.array(list(itertools.product(range(nx), range(ny))))
+# Ypred = reg.predict(Stest, Xnew)
+# Ypred = Ypred.reshape((50, 50))
+#

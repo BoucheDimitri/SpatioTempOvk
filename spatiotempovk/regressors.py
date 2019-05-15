@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.optimize as optimize
 
+import algebra.repeated_matrix as repmat
+
 
 class DiffSpatioTempRegressor:
 
@@ -57,6 +59,7 @@ class DiffSpatioTempRegressor:
         self.kernels = kernels
         self.alpha = None
         self.S = None
+        self.sameloc = False
 
     @staticmethod
     def eval(alpha, kx, ks):
@@ -256,8 +259,15 @@ class DiffSpatioTempRegressor:
 
     def fit(self, S, solver='L-BFGS-B', tol=1e-5, Kx=None, Ks=None):
         self.S = S
+        if self.S.sameloc:
+            self.sameloc = True
+        else:
+            self.sameloc = False
         if Kx is None:
-            Kx = self.kernelx.compute_K(S["x_flat"])
+            if self.sameloc:
+                Kx = repmat.RepSymMatrix(self.kernelx.compute_K(S["x"][0]), rep=(S.get_T(), S.get_T()))
+            else:
+                Kx = self.kernelx.compute_K(S["x_flat"])
         if Ks is None:
             Ks = self.kernels.compute_K(S["xy_tuple"])
         alpha0 = np.zeros(S.get_T() * S.get_barM())
@@ -267,6 +277,10 @@ class DiffSpatioTempRegressor:
         self.alpha = sol["x"].reshape((S.get_T(), S.get_barM()))
 
     def predict(self, Slast, Xnew):
-        Kxnew = self.kernelx.compute_Knew(self.S["x_flat"], Xnew)
+        if self.sameloc:
+            Kxnew = repmat.RepSymMatrix(self.kernelx.compute_K(self.S["x"][0]), rep=(self.S.get_T(), 1))
+        else:
+            Kxnew = self.kernelx.compute_Knew(self.S["x_flat"], Xnew)
         Ksnew = self.kernels.compute_Knew(self.S["xy_tuple"], Slast["xy_tuple"])
-        return Ksnew.T.dot(self.alpha).dot(Kxnew)
+        # return Ksnew.T.dot(self.alpha).dot(Kxnew)
+        return (Kxnew.transpose().dot(self.alpha.T).dot(Ksnew)).T

@@ -29,6 +29,11 @@ class SpatioTempData:
         for t in range(self.T):
             if self.Ms[t] != Msy[t]:
                 raise Exception('Numbers of locations and measurements do not correspond at time: {}'.format(t))
+        # Detect if measurements are always made at the same location
+        self.sameloc = True
+        for t in range(self.T-1):
+            if not np.allclose(self.X[t], self.X[t+1]):
+                self.sameloc = False
 
     def __getitem__(self, key):
         # First key corresponds to the choice of data, "x" for space, "y" for measurement, : for both
