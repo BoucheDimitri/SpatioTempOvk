@@ -18,8 +18,9 @@ importlib.reload(regressors)
 importlib.reload(argp2d)
 
 # Create synthetic data
-argp = argp2d.draw_ar1_gp2d()
-obs = argp2d.draw_observations(200, argp)
+argp = argp2d.draw_ar1_gp2d(T=50)
+# obs = argp2d.draw_observations(100, argp)
+obs = argp2d.draw_observations_sameloc(100, argp)
 nx, ny = argp[0].shape
 
 # Store this data in a SpatioTempData class instance
@@ -27,6 +28,9 @@ data = spatiotemp.SpatioTempData(obs)
 Ms = data.get_Ms()
 T = data.get_T()
 barM = data.get_barM()
+
+# Look at time series at a given location
+test = np.array([data["y"][i][20] for i in range(data.get_T())])
 
 # Kernels for convolution
 gausskerx = kernels.GaussianKernel(sigma=10)

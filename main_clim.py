@@ -5,6 +5,7 @@ import scipy.optimize as optimize
 import itertools
 import pandas as pd
 import os
+import time
 
 import spatiotempovk.spatiotempdata as spatiotemp
 import spatiotempovk.kernels as kernels
@@ -53,13 +54,16 @@ extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values
 data = spatiotemp.SpatioTempData(extract)
 
 # Train test data
-Strain = data.extract_subseq(0, 100)
-Slast = data.extract_subseq(99, 100)
-Stest = data.extract_subseq(100, 101)
+Strain = data.extract_subseq(0, 10)
+Slast = data.extract_subseq(9, 10)
+Stest = data.extract_subseq(10, 11)
 Ms = Strain.get_Ms()
 
 
 # ############# EXPLOITING SAME LOCATION #####################################################################
+# Timer
+start = time.time()
+
 # Kernels
 gausskerx = kernels.GaussianGeoKernel(sigma=1000)
 gausskery = kernels.GaussianKernel(sigma=15)
@@ -79,18 +83,20 @@ loss = losses.L2Loss()
 # Define regularizers and regularization params
 spacereg = regularizers.TikhonovSpace()
 timereg = regularizers.TikhonovTime()
-mu = 1
-lamb = 1
+mu = 0
+lamb = 0
 
 # Initialize and train regressor
 reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
-reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (100, 100)))
+reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (10, 10)))
 
 # Predict at new locations
 # Xnew = np.array(list(itertools.product(range(nx), range(ny))))
 Xnew = Strain["x_flat"][:125, :]
 Ypred = reg.predict(Slast, Xnew)
 
+end = time.time()
+print(end - start)
 
 # ######### NOT EXPLOITING SAME LOCATION ###############################################################################
 # Kernels

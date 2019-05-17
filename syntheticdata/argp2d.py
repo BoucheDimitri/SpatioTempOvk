@@ -61,6 +61,21 @@ def draw_observations(nobs, argp):
         obs.append((X, Y))
     return obs
 
+
+def draw_observations_sameloc(nobs, argp):
+    obs = []
+    nx, ny = argp[0].shape
+    T = len(argp)
+    x0, x1 = np.random.randint(0, nx), np.random.randint(0, ny)
+    for t in range(T):
+        X = np.zeros((nobs, 2))
+        Y = np.zeros(nobs)
+        for i in range(nobs):
+            X[i, :] = [x0, x1]
+            Y[i] = argp[t][x0, x1]
+        obs.append((X, Y))
+    return obs
+
 # fig, axes = plt.subplots(2, 2)
 # axes[0, 0].imshow(argp[0])
 # axes[0, 1].imshow(argp[1])

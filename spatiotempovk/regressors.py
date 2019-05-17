@@ -285,11 +285,13 @@ class DiffSpatioTempRegressor:
                 Kx = self.kernelx.compute_K(S["x_flat"])
         if Ks is None:
             Ks = self.kernels.compute_K(S["xy_tuple"])
-        alpha0 = np.zeros(S.get_T() * S.get_barM())
+        # alpha0 = np.zeros(S.get_T() * S.get_barM())
+        alpha0 = np.random.normal(0, 1, S.get_T() * S.get_barM())
         obj = self.objective_func(S.get_Ms(), S["y_flat"], Kx, Ks)
         grad = self.objective_grad_func(S.get_Ms(), S["y_flat"], Kx, Ks)
         sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
         self.alpha = sol["x"].reshape((S.get_T(), S.get_barM()))
+        print(sol["success"])
 
     def predict(self, Slast, Xnew):
         # Exploit sameloc=True by using the RepSymMatrix container to avoid storing a huge redundant matrix
