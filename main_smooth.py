@@ -18,6 +18,7 @@ import spatiotempovk.regressors as regressors
 import algebra.repeated_matrix as repmat
 import smoothing.representer as repsmooth
 import smoothing.parametrized_func as param_func
+import tsvalidation.sequentialval as seqval
 importlib.reload(repmat)
 importlib.reload(spatiotemp)
 importlib.reload(kernels)
@@ -92,14 +93,30 @@ plt.figure()
 plt.plot(tempX.flatten()[ind], tempY.flatten()[ind])
 
 
-clf = kernel_ridge.KernelRidge(alpha=10, kernel="rbf", gamma=1)
+clf = kernel_ridge.KernelRidge(alpha=10, kernel="rbf", gamma=0.0001)
 
-Ypred, Yreal = sequential_validation(clf, tempX, tempY, 40)
+trainX, trainY = tempX[:100], tempY[:100]
+testX, testY = tempX[100:], tempY[100:]
+clf.fit(trainX, trainY)
+Ypred = clf.predict(trainX)
+
+ind = trainX.flatten().argsort()
+plt.figure()
+plt.plot(trainX.flatten()[ind], Ypred.flatten()[ind])
+plt.scatter(testX.flatten()[ind], testY.flatten()[ind])
+
+ind = testX.flatten().argsort()
+plt.figure()
+plt.plot(testX.flatten()[ind], Ypred.flatten()[ind])
+plt.scatter(testX.flatten()[ind], testY.flatten()[ind])
+
+Ypred, Yreal = seqval.sequential_validation(clf, tempX, tempY, 40)
 
 tempXred = tempX.flatten()[40:]
 ind = tempXred.argsort()
 plt.figure()
-plt.plot(tempXred[ind], Ypred[ind])
+plt.scatter(tempXred[ind], Ypred[ind])
+plt.scatter(tempXred[ind], Yreal[ind])
 
 # temp_pred = []
 # real = []
