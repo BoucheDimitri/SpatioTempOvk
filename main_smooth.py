@@ -64,9 +64,9 @@ dates = pd.unique(datapd_sorted["DATE"])
 # Extract data and put it in the right form for SpatioTempData
 extract = [datapd_sorted[datapd_sorted.DATE == d] for d in dates]
 # With first differencing
-# extract = [(subtab.loc[:, ["LAT", "LONG"]].values[1:], subtab.loc[:, ["TMP"]].diff().values[1:]) for subtab in extract]
+extract = [(subtab.loc[:, ["LAT", "LONG"]].values[1:], subtab.loc[:, ["TMP"]].diff().values[1:]) for subtab in extract]
 # Origin series
-extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values) for subtab in extract]
+# extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values) for subtab in extract]
 
 # Create a SpatioTempData object from it
 data = spatiotemp.SpatioTempData(extract)

@@ -54,9 +54,12 @@ extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values
 data = spatiotemp.SpatioTempData(extract)
 
 # Train test data
-Strain = data.extract_subseq(0, 10)
-Slast = data.extract_subseq(9, 10)
-Stest = data.extract_subseq(10, 11)
+ntrain = 100
+Strain = data.extract_subseq(0, ntrain)
+Slast = data.extract_subseq(ntrain - 1, ntrain)
+Stest = data.extract_subseq(ntrain, ntrain + 1)
+Strain_input = data.extract_subseq(0, ntrain - 1)
+Strain_output = data.extract_subseq(1, ntrain)
 Ms = Strain.get_Ms()
 
 
@@ -83,20 +86,52 @@ loss = losses.L2Loss()
 # Define regularizers and regularization params
 spacereg = regularizers.TikhonovSpace()
 timereg = regularizers.TikhonovTime()
-mu = 0
-lamb = 0
+mu = 0.01
+lamb = 0.01
 
 # Initialize and train regressor
 reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
-reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (10, 10)))
+reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (ntrain, ntrain)))
 
 # Predict at new locations
 # Xnew = np.array(list(itertools.product(range(nx), range(ny))))
 Xnew = Strain["x_flat"][:125, :]
 Ypred = reg.predict(Slast, Xnew)
+Ytrainpred = reg.predict(Strain_input, Xnew)
 
 end = time.time()
 print(end - start)
+
+# ################## TESTS #############################################################################################
+
+# Time plots
+inp0 = np.array([Strain_input["y"][i][0, 0] for i in range(ntrain - 1)])
+
+Ytrainpred0 = np.array([Ytrainpred[i][0] for i in range(ntrain - 1)])
+
+Ytraintrue0 = np.array([Strain_output["y"][i][0, 0] for i in range(ntrain - 1)])
+
+ind = inp0.argsort()
+plt.figure()
+plt.plot(inp0[ind], Ytraintrue0[ind])
+plt.show()
+
+plt.plot(inp0[ind], Ytrainpred0[ind])
+plt.show()
+
+# Space plots
+cm = plt.cm.get_cmap('RdYlBu')
+fig, axes = plt.subplots(nrows=1, ncols=4)
+for i in range(0, 4):
+    sc0 = axes[i].scatter(Strain_output["x"][0][:, 0], Strain_output["x"][0][:, 1], c=Ytrainpred[i, :], cmap=cm)
+fig.colorbar(sc0)
+
+fig2, axes2 = plt.subplots(nrows=1, ncols=4)
+for i in range(0, 4):
+    sc1 = axes2[i].scatter(Strain_output["x"][0][:, 0], Strain_output["x"][0][:, 1], c=Strain_output["y"][i].flatten(), cmap=cm)
+fig2.colorbar(sc1)
+
+
 
 # ######### NOT EXPLOITING SAME LOCATION ###############################################################################
 # Kernels
@@ -127,6 +162,7 @@ reg.fit(Strain, Ks=Ks, Kx=Kx)
 # Predict at new locations
 # Xnew = np.array(list(itertools.product(range(nx), range(ny))))
 Xnew = Strain["x_flat"][:125, :]
+Ytrue = Scomplete["y"][0].flatten()[1:]
 Ypred = reg.predict(Slast, Xnew)
 
 
