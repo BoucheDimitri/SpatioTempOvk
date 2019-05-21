@@ -54,7 +54,7 @@ extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values
 data = spatiotemp.SpatioTempData(extract)
 
 # Train test data
-ntrain = 100
+ntrain = 20
 Strain = data.extract_subseq(0, ntrain)
 Slast = data.extract_subseq(ntrain - 1, ntrain)
 Stest = data.extract_subseq(ntrain, ntrain + 1)
@@ -86,8 +86,8 @@ loss = losses.L2Loss()
 # Define regularizers and regularization params
 spacereg = regularizers.TikhonovSpace()
 timereg = regularizers.TikhonovTime()
-mu = 0.01
-lamb = 0.01
+mu = 0.00001
+lamb = 0.00001
 
 # Initialize and train regressor
 reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
@@ -113,11 +113,9 @@ Ytraintrue0 = np.array([Strain_output["y"][i][0, 0] for i in range(ntrain - 1)])
 
 ind = inp0.argsort()
 plt.figure()
-plt.plot(inp0[ind], Ytraintrue0[ind])
-plt.show()
-
-plt.plot(inp0[ind], Ytrainpred0[ind])
-plt.show()
+plt.plot(inp0[ind], Ytraintrue0[ind], label="true")
+plt.plot(inp0[ind], Ytrainpred0[ind], label="predicted")
+plt.legend()
 
 # Space plots
 cm = plt.cm.get_cmap('RdYlBu')

@@ -4,8 +4,8 @@ from geopy import distance
 
 class Kernel:
 
-    def __init__(self):
-        pass
+    def __init__(self, normalize=False):
+        self.normalize = normalize
 
     def __call__(self, x0, x1):
         pass
@@ -13,11 +13,18 @@ class Kernel:
     def compute_K(self, X):
         n = len(X)
         K = np.zeros((n, n))
+        # Compute diagonal first for normalization
         for i in range(n):
-            for j in range(i, n):
+            K[i, i] = self(X[i], X[i])
+        for i in range(n):
+            for j in range(i+1, n):
                 k = self(X[i], X[j])
                 K[i, j] = k
                 K[j, i] = k
+                if self.normalize:
+                    knorm = (1 / (np.sqrt(K[i, i]) * np.sqrt(K[j, j])))
+                    K[i, j] *= knorm
+                    K[j, i] *= knorm
         return K
 
     def compute_Knew(self, X, Xnew):
@@ -61,8 +68,8 @@ class ConvKernel(Kernel):
         Are the measurements always made at the same locations
     """
 
-    def __init__(self, kernelx, kernely, Kx, Ky=None, sameloc=False):
-        super(ConvKernel, self).__init__()
+    def __init__(self, kernelx, kernely, Kx, Ky=None, sameloc=False, normalize=True):
+        super(ConvKernel, self).__init__(normalize)
         self.kernelx = kernelx
         self.Kx = Kx
         self.kernely = kernely
