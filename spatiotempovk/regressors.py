@@ -1,7 +1,226 @@
 import numpy as np
 import scipy.optimize as optimize
+import functools
 
 import algebra.repeated_matrix as repmat
+
+
+class DiffLocObsOnFuncReg:
+    """
+    Regressor (Reg) of a localized observations set (LocObs) onto another which outputs a function (Func)
+    in the case where the loss is differentiable (Diff)
+    """
+
+    def __init__(self, loss, smoothreg, globalreg, mu, lamb, kernelx, kernels):
+        self.loss = loss
+        self.smoothreg = smoothreg
+        self.globalreg = globalreg
+        self.mu = mu
+        self.lamb = lamb
+        self.kernelx = kernelx
+        self.kernels = kernels
+        self.alpha = None
+        self.training_data = None
+        self.sameloc = False
+
+    @staticmethod
+    def eval(kx, ks, alpha):
+        """
+        Prediction function
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        kx: np.ndarray
+            Kernel comparison between new location and all training location kx.shape = (barM, )
+        ks: np.ndarray
+            Kernel comparison between new sample and all training samples, ks.shape = (T, )
+
+        Returns
+        -------
+        F: float
+            prediction at time T+1 for location x
+        """
+        return ks.T.dot(alpha).dot(kx)
+
+    def data_fitting(self, Ms, y, Kx, Ks, alpha):
+        """
+        Compute data fitting term
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        xi: float
+            evaluation of the datafitting term in alpha
+        """
+        xi = 0
+        MT = Kx.shape[0]
+        T = Ks.shape[0]
+        if alpha.ndim == 1:
+            # Support for flat alpha for scipy optimizers
+            # This does not modify alpha outside of the function as we just assign a new view to it inside the function
+            # but do not touch the memory
+            alpha = alpha.reshape((T, MT))
+        for t in range(T):
+            xit = 0
+            for m in range(Ms[t]):
+                tm = sum(Ms[:t]) + m
+                xit += self.loss(y[tm], DiffLocObsOnFuncReg.eval(Kx[tm], Ks[t], alpha))
+            xi += (1 / Ms[t]) * xit
+        return (1 / T) * xi
+
+    def data_fitting_prime(self, Ms, y, Kx, Ks, alpha):
+        """
+        Gradient of data fitting term
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        grad_xi: float
+            gradient of data fitting term evaluated in alpha
+        """
+        MT = Kx.shape[0]
+        T = Ks.shape[0]
+        flatind = False
+        if alpha.ndim == 1:
+            # Support for flat alpha for scipy optimizers
+            # This does not modify alpha outside of the function as we just assign a new view to it inside the function
+            # but do not touch the memory
+            alpha = alpha.reshape((T, MT))
+            flatind = True
+        xi_prime = np.zeros(alpha.shape)
+        for t in range(T):
+            for m in range(Ms[t]):
+                tm = sum(Ms[:t]) + m
+                k = Ks[t].reshape((Ks.shape[0], 1)).dot(Kx[tm].reshape((1, Kx.shape[0])))
+                xi_prime += (1 / Ms[t]) * self.loss.prime(y[tm],
+                                                          DiffLocObsOnFuncReg.eval(Kx[tm], Ks[t], alpha)) * k
+        if flatind:
+            return (1 / T) * xi_prime.flatten()
+        else:
+            return (1 / T) * xi_prime
+
+    def objective(self, Ms, y, Kx, Ks, alpha):
+        """
+        Complet objective function
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        obj_eval: float
+            value of the full objective in alpha
+        """
+        return self.data_fitting(Ms, y, Kx, Ks, alpha) \
+            + self.mu * self.smoothreg(Kx, Ks, alpha) \
+            + self.lamb * self.globalreg(Kx, Ks, alpha)
+
+    def objective_func(self, Ms, y, Kx, Ks):
+        """
+        Fix all parameters but alpha to optimize the objective function
+
+        Parameters
+        ----------
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        obj: function
+            objective function
+        """
+        return functools.partial(self.objective, Ms, y, Kx, Ks)
+
+    def objective_prime(self, Ms, y, Kx, Ks, alpha):
+        """
+        Gradient of the objective function
+
+        Parameters
+        ----------
+        alpha: np.ndarray
+            Representer theorem coefficients, alpha.shape = (T, barM)
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+
+        obj: function
+            objective function as a function of only alpha
+        """
+        return self.data_fitting_prime(Ms, y, Kx, Ks, alpha) \
+            + self.mu * self.smoothreg.prime(Kx, Ks, alpha) \
+            + self.lamb * self.globalreg.prime(Kx, Ks, alpha)
+
+    def objective_grad_func(self, Ms, y, Kx, Ks):
+        """
+        Fix all parameters but alpha to in the objective gradient for optimization
+
+        Parameters
+        ----------
+        Ms: list
+            Number of locations per time step : [M_1,...,M_T]
+        y: np.ndarray
+            Flatten measurements, y.shape = (barM, )
+        Kx: np.ndarray
+            Training locations kernel matrix, Kx.shape = (barM, barM)
+        Ks: np.ndarray
+            Time samples kernel matrix, Ks.shape = (T, T)
+
+        Returns
+        -------
+        grad: function
+            gradient of objective function as a function of only alpha
+        """
+        return functools.partial(self.objective_prime, Ms, y, Kx, Ks)
 
 
 class DiffSpatioTempRegressor:

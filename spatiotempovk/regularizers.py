@@ -10,10 +10,10 @@ class DoubleRepresenterRegularizer:
     def __init__(self):
         pass
 
-    def __call__(self, alpha, Kx, Ks):
+    def __call__(self, Kx, Ks, alpha):
         pass
 
-    def prime(self, alpha, Kx, Ks):
+    def prime(self, Kx, Ks, alpha):
         pass
 
 
@@ -23,7 +23,7 @@ class TikhonovSpace(DoubleRepresenterRegularizer):
         super(TikhonovSpace, self).__init__()
 
     @staticmethod
-    def compute_A(alpha, Kx):
+    def compute_A(Kx, alpha):
         T = alpha.shape[0]
         A = np.zeros((T, T))
         for t0 in range(T):
@@ -34,17 +34,36 @@ class TikhonovSpace(DoubleRepresenterRegularizer):
                 A[t1, t0] = a
         return A
 
-    def __call__(self, alpha, Kx, Ks):
+    def __call__(self, Kx, Ks, alpha):
         T = Ks.shape[0]
-        A = TikhonovTime.compute_A(alpha, Kx)
+        MT = Kx.shape[0]
+        if alpha.ndim == 1:
+            # Support for flat alpha for scipy optimizers
+            # This does not modify alpha outside of the function as we just assign a new view to it inside the function
+            # but do not touch the memory
+            alpha = alpha.reshape((T, MT))
+        A = TikhonovTime.compute_A(Kx, alpha)
         reg = 0
         for t in range(T):
             reg += Ks[t, :].T.dot(A).dot(Ks[t, :])
         return (1 / T) * reg
 
-    def prime(self, alpha, Kx, Ks):
+    def prime(self, Kx, Ks, alpha):
+        T = Ks.shape[0]
+        MT = Kx.shape[0]
+        flatind = False
+        if alpha.ndim == 1:
+            # Support for flat alpha for scipy optimizers
+            # This does not modify alpha outside of the function as we just assign a new view to it inside the function
+            # but do not touch the memory
+            alpha = alpha.reshape((T, MT))
+            flatind = True
         # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
-        return (2 / Ks.shape[0]) * Ks.T.dot(Ks).dot((Kx.dot(alpha.T)).T)
+        grad = (2 / Ks.shape[0]) * Ks.T.dot(Ks).dot((Kx.dot(alpha.T)).T)
+        if flatind:
+            return grad.flatten()
+        else:
+            return grad
 
 
 class TikhonovTime(DoubleRepresenterRegularizer):
@@ -53,7 +72,7 @@ class TikhonovTime(DoubleRepresenterRegularizer):
         super(TikhonovTime, self).__init__()
 
     @staticmethod
-    def compute_A(alpha, Kx):
+    def compute_A(Kx, alpha):
         T = alpha.shape[0]
         A = np.zeros((T, T))
         for t0 in range(T):
@@ -64,11 +83,31 @@ class TikhonovTime(DoubleRepresenterRegularizer):
                 A[t1, t0] = a
         return A
 
-    def __call__(self, alpha, Kx, Ks):
-        A = TikhonovTime.compute_A(alpha, Kx)
+    def __call__(self, Kx, Ks, alpha):
+        T = Ks.shape[0]
+        MT = Kx.shape[0]
+        if alpha.ndim == 1:
+            # Support for flat alpha for scipy optimizers
+            # This does not modify alpha outside of the function as we just assign a new view to it inside the function
+            # but do not touch the memory
+            alpha = alpha.reshape((T, MT))
+        A = TikhonovTime.compute_A(Kx, alpha)
         return np.sum(Ks * A)
 
-    def prime(self, alpha, Kx, Ks):
+    def prime(self, Kx, Ks, alpha):
+        T = Ks.shape[0]
+        MT = Kx.shape[0]
+        flatind = False
+        if alpha.ndim == 1:
+            # Support for flat alpha for scipy optimizers
+            # This does not modify alpha outside of the function as we just assign a new view to it inside the function
+            # but do not touch the memory
+            alpha = alpha.reshape((T, MT))
+            flatind = True
         # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
-        return 2 * Ks.dot((Kx.dot(alpha.T)).T)
+        grad = 2 * Ks.dot((Kx.dot(alpha.T)).T)
+        if flatind:
+            return grad.flatten()
+        else:
+            return grad
 

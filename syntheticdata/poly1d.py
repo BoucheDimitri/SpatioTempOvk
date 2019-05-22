@@ -1,8 +1,21 @@
 from functools import partial
 import numpy as np
 import importlib
+import matplotlib.pyplot as plt
 
+import spatiotempovk.spatiotempdata as spatiotemp
+import spatiotempovk.kernels as kernels
+import spatiotempovk.losses as losses
+import spatiotempovk.regularizers as regularizers
+import spatiotempovk.regressors as regressors
+import algebra.repeated_matrix as repmat
 from smoothing import parametrized_func as para_func
+importlib.reload(repmat)
+importlib.reload(spatiotemp)
+importlib.reload(kernels)
+importlib.reload(losses)
+importlib.reload(regularizers)
+importlib.reload(regressors)
 importlib.reload(para_func)
 
 
@@ -11,18 +24,40 @@ def random_polys(draw_coeff_func, draw_deg_func=None, deg=None, nsim=1):
         raise ValueError("Provide either draw_deg_func of deg")
     elif draw_deg_func is None and deg is not None:
         alphas = draw_coeff_func((nsim, deg))
-        samples = [para_func.Polynomial(alphas[i]) for i in range(nsim)]
+        samples = [para_func.PolynomialBased(alphas[i]) for i in range(nsim)]
     else:
         samples = []
         degs = draw_deg_func(nsim)
         for i in range(nsim):
             alpha = draw_coeff_func(degs[i])
-            samples.append(para_func.Polynomial(alpha))
+            samples.append(para_func.PolynomialBased(alpha))
     return samples
 
 
+def plot_params_funcs(funcs, nplot, xlims, nlin=100):
+    sp = np.linspace(xlims[0], xlims[1], nlin)
+    fig, ax = plt.subplots()
+    count = 0
+    while count < nplot:
+        ax.plot(sp, [funcs[count](x) for x in sp])
+        count += 1
 
+
+def random_fourier_func(draw_coeff_func, nfreq=3, interval = (0, 1), nsim=1):
+    alphas = draw_coeff_func((nsim, 2 * nfreq))
+    samples = [para_func.FourierBased(alphas[i], nfreq, interval) for i in range(nsim)]
+    return samples
+
+
+# Drawing function from normal(0, 1)
 norm01 = partial(np.random.normal, 0, 1)
-randint110 = partial(np.random.randint, 1, 10)
 
-rand_polys = random_polys(norm01, randint110, nsim=100)
+# Draw random polynomials of fixed degree
+polys = random_polys(norm01, deg=20, nsim=100)
+polysprime = [poly.prime() for poly in polys]
+
+# Draw random fourier based functions with fixed number of frequencies
+fouriers = random_fourier_func(norm01, nsim=100)
+fouriers_prime = [four.prime() for four in fouriers]
+
+#

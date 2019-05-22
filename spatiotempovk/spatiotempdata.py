@@ -1,6 +1,48 @@
 import numpy as np
 
 
+class LocObs:
+
+    def __init__(self, X, Y):
+        self.X = X
+        self.Y = Y
+
+    def __getitem__(self, item):
+        if not isinstance(item, tuple):
+            if item == "x":
+                return self.X.copy()
+            elif item == "y":
+                return self.Y.copy()
+            elif item == "xy":
+                return self.X.copy(), self.Y.copy()
+            else:
+                raise KeyError("Key must be within ['x', 'y', 'xy']")
+        elif len(item) == 2:
+            if item[0] == "x":
+                return self.X[item[1]]
+            elif item[0] == "y":
+                return self.Y[item[1]]
+            elif item[0] == "xy":
+                return self.X[item[1]], self.Y[item[1]]
+            else:
+                raise KeyError("Key must be within ['x', 'y', 'xy']")
+
+
+class LocObsSet:
+    """
+    Parameters
+    ----------
+    S: list
+        list of tuples (X_t, Y_t), len(S)=T, X_t.shape=(nobs_t, space_dim) and Y_t.shape=(nobs_t, output_dim)
+
+    """
+
+    def __init__(self, S):
+        self.nsamples = len(S)
+        self.S = [LocObs(S[i][0], S[i][1]) for i in range(len(S))]
+        self.cards = [S[t][0].shape[0] for t in range(self.nsamples)]
+
+
 class SpatioTempData:
     """
     Class for spatio temporal data, mostly to reimplement the __getitem__ magic method

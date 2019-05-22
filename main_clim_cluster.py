@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import time
 import pickle
+import numpy as np
 
 import spatiotempovk.spatiotempdata as spatiotemp
 import spatiotempovk.kernels as kernels
@@ -51,7 +52,7 @@ extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values
 data = spatiotemp.SpatioTempData(extract)
 
 # Train test data
-ntrain = 100
+ntrain = 10
 Strain = data.extract_subseq(0, ntrain)
 Slast = data.extract_subseq(ntrain - 1, ntrain)
 Stest = data.extract_subseq(ntrain, ntrain + 1)
@@ -83,8 +84,24 @@ loss = losses.L2Loss()
 # Define regularizers and regularization params
 spacereg = regularizers.TikhonovSpace()
 timereg = regularizers.TikhonovTime()
-mu = 0.01
-lamb = 0.01
+mu = 1
+lamb = 1
+
+
+#
+
+MT = sum(Strain.Ms)
+T = Ks.shape[0]
+alpha = np.random.normal(0, 1, (T, MT))
+
+test_reg = regressors.DiffLocObsOnFuncReg(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+
+test_reg.data_fitting(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks, alpha)
+test_reg.data_fitting_prime(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks, alpha.flatten())
+
+test_reg.objective_prime(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks, alpha)
+
+grad_func = test_reg.objective_grad_func(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks)
 
 # Initialize and train regressor
 reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
