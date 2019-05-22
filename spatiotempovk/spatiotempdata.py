@@ -1,49 +1,62 @@
 import numpy as np
 
 
-class LocObs:
-
-    def __init__(self, X, Y):
-        self.X = X
-        self.Y = Y
-
-    def __getitem__(self, item):
-        if not isinstance(item, tuple):
-            if item == "x":
-                return self.X.copy()
-            elif item == "y":
-                return self.Y.copy()
-            elif item == "xy":
-                return self.X.copy(), self.Y.copy()
-            else:
-                raise KeyError("Key must be within ['x', 'y', 'xy']")
-        elif len(item) == 2:
-            if item[0] == "x":
-                return self.X[item[1]]
-            elif item[0] == "y":
-                return self.Y[item[1]]
-            elif item[0] == "xy":
-                return self.X[item[1]], self.Y[item[1]]
-            else:
-                raise KeyError("Key must be within ['x', 'y', 'xy']")
+# class LocObs:
+#
+#     def __init__(self, X, Y):
+#         self.X = X
+#         self.Y = Y
+#
+#     def __getitem__(self, item):
+#         if not isinstance(item, tuple):
+#             if item == "x":
+#                 return self.X.copy()
+#             elif item == "y":
+#                 return self.Y.copy()
+#             elif item == "xy":
+#                 return self.X.copy(), self.Y.copy()
+#             else:
+#                 raise KeyError("Key must be within ['x', 'y', 'xy']")
+#         elif len(item) == 2:
+#             if item[0] == "x":
+#                 return self.X[item[1]]
+#             elif item[0] == "y":
+#                 return self.Y[item[1]]
+#             elif item[0] == "xy":
+#                 return self.X[item[1]], self.Y[item[1]]
+#             else:
+#                 raise KeyError("Key must be within ['x', 'y', 'xy']")
+#
+#
+# class LocObsSet:
+#     """
+#     Parameters
+#     ----------
+#     S: list
+#         list of tuples (X_t, Y_t), len(S)=T, X_t.shape=(nobs_t, space_dim) and Y_t.shape=(nobs_t, output_dim)
+#
+#     """
+#
+#     def __init__(self, S):
+#         self.nsamples = len(S)
+#         self.S = [LocObs(S[i][0], S[i][1]) for i in range(len(S))]
+#         self.cards = [S[t][0].shape[0] for t in range(self.nsamples)]
+#
+#     def __getitem__(self, item):
+#         if not isinstance(item, tuple):
+#             if item == "x":
+#                 return [self.S[i]["x"] for i in range(self.nsamples)]
+#             elif item == "y":
+#                 return [self.S[i]["y"] for i in range(self.nsamples)]
+#             elif item == "xy":
+#                 return self.X.copy(), self.Y.copy()
+#             else:
+#                 raise KeyError("Key must be within ['x', 'y', 'xy']")
+#
+#
 
 
 class LocObsSet:
-    """
-    Parameters
-    ----------
-    S: list
-        list of tuples (X_t, Y_t), len(S)=T, X_t.shape=(nobs_t, space_dim) and Y_t.shape=(nobs_t, output_dim)
-
-    """
-
-    def __init__(self, S):
-        self.nsamples = len(S)
-        self.S = [LocObs(S[i][0], S[i][1]) for i in range(len(S))]
-        self.cards = [S[t][0].shape[0] for t in range(self.nsamples)]
-
-
-class SpatioTempData:
     """
     Class for spatio temporal data, mostly to reimplement the __getitem__ magic method
 
@@ -120,25 +133,6 @@ class SpatioTempData:
             else:
                 raise KeyError("Key must be within ['x', 'y', 'xy', 'x_flat', 'y_flat', 'xy_flat', 'xy_tuple']")
 
-    @classmethod
-    def new_instance(cls, S):
-        """
-        Class method to create new instance from within class
-
-
-        Parameters
-        ----------
-        S: list
-            list of tuples (X_t, Y_t), len(S)=T, X_t.shape=(nobs_t, space_dim) and Y_t.shape=(nobs_t, output_dim)
-
-        Returns
-        -------
-
-        data: SpatioTempData
-            SpatioTempData new instance
-        """
-        return cls(S)
-
     def get_original_data(self, t0=None, t1=None):
         """
         Get back data in the original form from the data, possility to extract subsequence using time bounds
@@ -180,7 +174,7 @@ class SpatioTempData:
             subseq: SpatioTempData
                 sub instance of the object within bounds t0 and t1
         """
-        return SpatioTempData.new_instance(self.get_original_data(t0=t0, t1=t1))
+        return LocObsSet(self.get_original_data(t0=t0, t1=t1))
 
     def flat_index(self, t, m):
         """

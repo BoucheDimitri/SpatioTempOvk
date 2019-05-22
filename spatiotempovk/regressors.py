@@ -3,6 +3,7 @@ import scipy.optimize as optimize
 import functools
 
 import algebra.repeated_matrix as repmat
+import spatiotempovk.spatiotempdata as spatiotempdata
 
 
 class DiffLocObsOnFuncReg:
@@ -20,7 +21,8 @@ class DiffLocObsOnFuncReg:
         self.kernelx = kernelx
         self.kernels = kernels
         self.alpha = None
-        self.training_data = None
+        self.training_input = None
+        self.training_output = None
         self.sameloc = False
 
     @staticmethod
@@ -221,6 +223,36 @@ class DiffLocObsOnFuncReg:
             gradient of objective function as a function of only alpha
         """
         return functools.partial(self.objective_prime, Ms, y, Kx, Ks)
+
+    def fit(self, S, V, solver='L-BFGS-B', tol=1e-5, Kx=None, Ks=None):
+        # Memorize training set
+        if not isinstance(S, spatiotempdata.LocObsSet):
+            self.training_input = spatiotempdata.LocObsSet(S)
+        else:
+            self.training_input = S
+        if not isinstance(V, spatiotempdata.LocObsSet):
+            self.training_output = spatiotempdata.LocObsSet(V)
+        else :
+            self.training_output = V
+        # Check if same location can be exploited in the locations
+        if self.training_output.sameloc:
+            self.sameloc = True
+        if Kx is None:
+            # Exploit sameloc=True by using the RepSymMatrix container to avoid storing a huge redundant matrix
+            if self.sameloc:
+                Kx = repmat.RepSymMatrix(self.kernelx.compute_K(V["x"][0]), rep=(V.get_T(), V.get_T()))
+            else:
+                Kx = self.kernelx.compute_K(V["x_flat"])
+        if Ks is None:
+            Ks = self.kernels.compute_K(S["xy_tuple"])
+        # alpha0 = np.zeros(S.get_T() * S.get_barM())
+        alpha0 = np.random.normal(0, 1, V.get_T() * V.get_barM())
+        obj = self.objective_func(V.get_Ms(), V["y_flat"], Kx, Ks)
+        grad = self.objective_grad_func(V.get_Ms(), V["y_flat"], Kx, Ks)
+        sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
+        self.alpha = sol["x"].reshape((V.get_T(), V.get_barM()))
+        print(sol["success"])
+
 
 
 class DiffSpatioTempRegressor:

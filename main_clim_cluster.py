@@ -49,7 +49,7 @@ extract = [datapd_sorted[datapd_sorted.DATE == d] for d in dates]
 extract = [(subtab.loc[:, ["LAT", "LONG"]].values, subtab.loc[:, ["TMP"]].values) for subtab in extract]
 
 # Create a SpatioTempData object from it
-data = spatiotemp.SpatioTempData(extract)
+data = spatiotemp.LocObsSet(extract)
 
 # Train test data
 ntrain = 10
@@ -68,7 +68,7 @@ start = time.time()
 # Kernels
 gausskerx = kernels.GaussianGeoKernel(sigma=1000)
 gausskery = kernels.GaussianKernel(sigma=15)
-Kx = gausskerx.compute_K(Strain["x_flat"][:125])
+Kx = gausskerx.compute_K(Strain_input["x_flat"][:125])
 # Ky = gausskery.compute_K(Strain["y_flat"])
 # Kx = gausskerx.compute_K(Strain["x_flat"])
 Ky = None
@@ -76,7 +76,7 @@ convkers = kernels.ConvKernel(gausskerx, gausskery, Kx, Ky, sameloc=True)
 
 # Compute convolution kernel matrix
 # Ks = convkers.compute_K_from_mat(Ms)
-Ks = convkers.compute_K(Strain["xy_tuple"])
+Ks = convkers.compute_K(Strain_input["xy_tuple"])
 
 # Define loss
 loss = losses.L2Loss()
@@ -90,7 +90,7 @@ lamb = 1
 
 #
 
-MT = sum(Strain.Ms)
+MT = sum(Strain_output.Ms)
 T = Ks.shape[0]
 alpha = np.random.normal(0, 1, (T, MT))
 
@@ -101,11 +101,11 @@ test_reg.data_fitting_prime(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx,
 
 test_reg.objective_prime(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks, alpha)
 
-grad_func = test_reg.objective_grad_func(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks)
+grad_func = test_reg.objective_grad_func(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain - 1, ntrain - 1)), Ks)
 
-# Initialize and train regressor
-reg = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
-reg.fit(Strain, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (ntrain, ntrain)))
+test_reg = regressors.DiffLocObsOnFuncReg(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+
+test_reg.fit(Strain_input, Strain_output, Ks=Ks, Kx=repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)))
 
 # Predict at new locations
 # Xnew = np.array(list(itertools.product(range(nx), range(ny))))
