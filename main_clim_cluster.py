@@ -4,6 +4,7 @@ import os
 import time
 import pickle
 import numpy as np
+import functools
 
 import spatiotempovk.spatiotempdata as spatiotemp
 import spatiotempovk.kernels as kernels
@@ -68,11 +69,11 @@ start = time.time()
 # Kernels
 gausskerx = kernels.GaussianGeoKernel(sigma=1000)
 gausskery = kernels.GaussianKernel(sigma=15)
-Kx = gausskerx.compute_K(Strain_input["x_flat"][:125])
+Kx = gausskerx.compute_K(Strain_output["x_flat"])
 # Ky = gausskery.compute_K(Strain["y_flat"])
 # Kx = gausskerx.compute_K(Strain["x_flat"])
 Ky = None
-convkers = kernels.ConvKernel(gausskerx, gausskery, Kx, Ky, sameloc=True)
+convkers = kernels.ConvKernel(gausskerx, gausskery, Kx, Ky, sameloc=False)
 
 # Compute convolution kernel matrix
 # Ks = convkers.compute_K_from_mat(Ms)
@@ -90,11 +91,96 @@ lamb = 1
 
 #
 
-MT = sum(Strain_output.Ms)
+MT = Kx.shape[0]
 T = Ks.shape[0]
-alpha = np.random.normal(0, 1, (T, MT))
+alpha = np.zeros((T, MT))
+
+Strain.sameloc=False
+test_reg0 = regressors.DiffSpatioTempRegressor(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+
+grad_func = test_reg0.objective_grad_func(Strain.Ms, Strain["y_flat"], Kx, Ks)
+obj_func = test_reg0.objective_func(Strain.Ms, Strain["y_flat"], Kx, Ks)
+
+
+gamma=0.01
+gradnorms=[np.linalg.norm(grad_func(alpha))]
+objs=[obj_func(alpha)]
+for i in range(50):
+    grad = grad_func(alpha)
+    alpha -= 0.01*grad
+    objs.append(obj_func(alpha))
+    gradnorms.append(np.linalg.norm(grad))
+    print(i)
+
+
+
+
 
 test_reg = regressors.DiffLocObsOnFuncReg(loss, spacereg, timereg, mu, lamb, gausskerx, convkers)
+
+datafitting = functools.partial(test_reg.data_fitting, Strain_output.Ms, Strain_output["y_flat"], Kx, Ks)
+datafitting_prime = functools.partial(test_reg.data_fitting_prime, Strain_output.Ms, Strain_output["y_flat"], Kx, Ks)
+
+datafitting = functools.partial(test_reg.data_fitting, Strain_input.Ms, Strain_output["y_flat"], repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+datafitting_prime = functools.partial(test_reg.data_fitting_prime, Strain_input.Ms, Strain_output["y_flat"], repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+regspace = functools.partial(test_reg.smoothreg, repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+regspace_prime = functools.partial(test_reg.smoothreg.prime, repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+regtime = functools.partial(test_reg.globalreg.prime, repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+regtime_prime = functools.partial(test_reg.globalreg, repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+
+
+import scipy.optimize as optimize
+
+sol = optimize.minimize(datafitting, x0=alpha.flatten())
+
+gamma=0.0001
+gradnorms=[np.linalg.norm(datafitting_prime(alpha))]
+objs=[datafitting(alpha)]
+for i in range(50):
+    grad = datafitting_prime(alpha)
+    alpha -= 0.01*grad
+    objs.append(datafitting(alpha))
+    gradnorms.append(np.linalg.norm(grad))
+    print(i)
+
+gamma=0.01
+gradnorms=[np.linalg.norm(regspace_prime(alpha))]
+objs=[regspace(alpha)]
+for i in range(50):
+    grad = regspace_prime(alpha)
+    alpha -= 0.01*grad
+    objs.append(regspace(alpha))
+    gradnorms.append(np.linalg.norm(grad))
+    print(i)
+
+gamma=0.01
+gradnorms=[np.linalg.norm(regtime_prime(alpha))]
+objs=[regtime(alpha)]
+for i in range(50):
+    grad = regtime_prime(alpha)
+    alpha -= 0.01*grad
+    objs.append(regtime(alpha))
+    gradnorms.append(np.linalg.norm(grad))
+    print(i)
+
+
+
+
+grad_func = test_reg.objective_grad_func(Strain_input.Ms, Strain_output["y_flat"], repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+obj_func = test_reg.objective_func(Strain_input.Ms, Strain_output["y_flat"], repmat.RepSymMatrix(Kx, (ntrain-1, ntrain-1)), Ks)
+
+gamma=0.01
+gradnorms=[np.linalg.norm(grad_func(alpha))]
+objs=[obj_func(alpha)]
+for i in range(50):
+    grad = grad_func(alpha)
+    alpha -= 0.01*grad
+    objs.append(obj_func(alpha))
+    gradnorms.append(np.linalg.norm(grad))
+    print(i)
+
+
+
 
 test_reg.data_fitting(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks, alpha)
 test_reg.data_fitting_prime(Strain.Ms, Strain["y_flat"], repmat.RepSymMatrix(Kx, (ntrain, ntrain)), Ks, alpha.flatten())

@@ -25,6 +25,9 @@ class Kernel:
                     knorm = (1 / (np.sqrt(K[i, i]) * np.sqrt(K[j, j])))
                     K[i, j] *= knorm
                     K[j, i] *= knorm
+        if self.normalize:
+            for i in range(n):
+                K[i, i] = 1.0
         return K
 
     def compute_Knew(self, X, Xnew):

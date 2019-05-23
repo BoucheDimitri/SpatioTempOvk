@@ -423,8 +423,8 @@ class DiffSpatioTempRegressor:
             value of the full objective in alpha
         """
         return self.data_fitting(alpha, Ms, y, Kx, Ks) \
-               + self.mu * self.spacereg(alpha, Kx, Ks) \
-               + self.lamb * self.timereg(alpha, Kx, Ks)
+               + self.mu * self.spacereg(Kx, Ks, alpha) \
+               + self.lamb * self.timereg(Kx, Ks, alpha)
 
     def objective_func(self, Ms, y, Kx, Ks):
         """
@@ -479,8 +479,8 @@ class DiffSpatioTempRegressor:
             objective function as a function of only alpha
         """
         return self.data_fitting_prime(alpha, Ms, y, Kx, Ks) \
-               + self.mu * self.spacereg.prime(alpha, Kx, Ks) \
-               + self.lamb * self.timereg.prime(alpha, Kx, Ks)
+               + self.mu * self.spacereg.prime(Kx, Ks, alpha) \
+               + self.lamb * self.timereg.prime(Kx, Ks, alpha)
 
     def objective_grad_func(self, Ms, y, Kx, Ks):
         """

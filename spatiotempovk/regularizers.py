@@ -30,6 +30,8 @@ class TikhonovSpace(DoubleRepresenterRegularizer):
             for t1 in range(t0, T):
                 # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
                 a = alpha[t0, :].dot(Kx.dot(alpha[t1, :].T))
+                # # Test, not compatible with algebra.repeated_matrix
+                # a = alpha[t0, :].dot(Kx).dot(alpha[t1, :].T)
                 A[t0, t1] = a
                 A[t1, t0] = a
         return A
@@ -60,6 +62,8 @@ class TikhonovSpace(DoubleRepresenterRegularizer):
             flatind = True
         # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
         grad = (2 / Ks.shape[0]) * Ks.T.dot(Ks).dot((Kx.dot(alpha.T)).T)
+        # # Test incompatible with RepSymMat
+        # grad = (2 / T) * Ks.dot(Ks).dot(alpha).dot(Kx)
         if flatind:
             return grad.flatten()
         else:
