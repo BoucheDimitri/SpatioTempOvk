@@ -34,7 +34,6 @@ class ParametrizedFunc:
 
     def __call__(self, X):
         K = self.eval_matrix(X)
-        print(K.shape)
         return K.T.dot(self.alpha)
 
 

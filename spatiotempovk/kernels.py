@@ -105,6 +105,14 @@ class ConvKernel(Kernel):
                 k = self.from_mat(index0, index1)
                 K[t0, t1] = k
                 K[t1, t0] = k
+        if self.normalize:
+            for t0 in range(T):
+                for t1 in range(t0+1, T):
+                    k = 1 / (np.sqrt(K[t0, t0]) * np.sqrt(K[t1, t1]))
+                    K[t0, t1] *= k
+                    K[t1, t0] *= k
+            for t0 in range(T):
+                K[t0, t0] = 1.0
         return K
 
 

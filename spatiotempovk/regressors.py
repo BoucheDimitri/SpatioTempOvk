@@ -226,14 +226,16 @@ class DiffLocObsOnFuncReg:
 
     def fit(self, S, V, solver='L-BFGS-B', tol=1e-5, Kx=None, Ks=None):
         # Memorize training set
-        if not isinstance(S, spatiotempdata.LocObsSet):
-            self.training_input = spatiotempdata.LocObsSet(S)
-        else:
-            self.training_input = S
-        if not isinstance(V, spatiotempdata.LocObsSet):
-            self.training_output = spatiotempdata.LocObsSet(V)
-        else :
-            self.training_output = V
+        # if not isinstance(S, spatiotempdata.LocObsSet):
+        #     self.training_input = spatiotempdata.LocObsSet(S)
+        # else:
+        #     self.training_input = S
+        # if not isinstance(V, spatiotempdata.LocObsSet):
+        #     self.training_output = spatiotempdata.LocObsSet(V)
+        # else :
+        #     self.training_output = V
+        self.training_input = S
+        self.training_output = V
         # Check if same location can be exploited in the locations
         if self.training_output.sameloc:
             self.sameloc = True
@@ -252,6 +254,18 @@ class DiffLocObsOnFuncReg:
         sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
         self.alpha = sol["x"].reshape((V.get_T(), V.get_barM()))
         print(sol["success"])
+
+    def predict(self, Snew, Xnew):
+        # Exploit sameloc=True by using the RepSymMatrix container to avoid storing a huge redundant matrix
+        if self.sameloc:
+            Kxnew = repmat.RepSymMatrix(self.kernelx.compute_K(self.training_output["x"][0]),
+                                        rep=(self.training_output.get_T(), 1))
+        else:
+            Kxnew = self.kernelx.compute_Knew(self.training_output["x_flat"], Xnew)
+        Ksnew = self.kernels.compute_Knew(self.training_input["xy_tuple"], Snew["xy_tuple"])
+        # Weird order of matrix product for compatibility with algebra.repeated_matrix.RepSymMatrix
+        return (Kxnew.transpose().dot(self.alpha.T).dot(Ksnew)).T
+
 
 
 

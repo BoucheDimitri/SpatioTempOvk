@@ -48,16 +48,3 @@ def random_fourier_func(draw_coeff_func, nfreq=3, interval = (0, 1), nsim=1):
     samples = [para_func.FourierBased(alphas[i], nfreq, interval) for i in range(nsim)]
     return samples
 
-
-# Drawing function from normal(0, 1)
-norm01 = partial(np.random.normal, 0, 1)
-
-# Draw random polynomials of fixed degree
-polys = random_polys(norm01, deg=20, nsim=100)
-polysprime = [poly.prime() for poly in polys]
-
-# Draw random fourier based functions with fixed number of frequencies
-fouriers = random_fourier_func(norm01, nsim=100)
-fouriers_prime = [four.prime() for four in fouriers]
-
-#
