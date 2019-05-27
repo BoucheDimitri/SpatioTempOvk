@@ -20,7 +20,6 @@ import spatiotempovk.regressors as regressors
 import algebra.repeated_matrix as repmat
 import smoothing.representer as repsmooth
 import smoothing.parametrized_func as param_func
-import solvers.gradientbased as gradientbased
 import tsvalidation.sequentialval as seqval
 importlib.reload(repmat)
 importlib.reload(spatiotemp)
@@ -60,51 +59,35 @@ dataouttest = dataout.extract_subseq(Ntrain, Ntrain + Ntest)
 datain = datain.extract_subseq(0, Ntrain)
 dataout = dataout.extract_subseq(0, Ntrain)
 
+# Smoothing
+gausskerx = kernels.GaussianKernel(sigma=0.3)
+Kx = gausskerx.compute_K(datain["x"][0])
+ridge_smoother = repsmooth.RidgeSmoother(mu=0.001, kernel=gausskerx)
+alphain, base = ridge_smoother(datain["x"], datain["y"])
+alphaout, _ = ridge_smoother(datain["x"], dataout["y"])
 
-# Kernels
-kernelx = kernels.GaussianKernel(sigma=0.3)
-Kxin = kernelx.compute_K(locs)
-kernely = kernels.GaussianKernel(sigma=0.5)
-Kyin = kernely.compute_K(datain["y_flat"])
-kers = kernels.ConvKernel(kernelx, kernely, Kxin, Kyin, sameloc=True)
-Ks = kers.compute_K_from_mat(datain.Ms)
+# Test for smoothing
+f0 = param_func.ParametrizedFunc(alphaout[0], base)
+f0eval = [f0(x) for x in datain["x"][0]]
+plt.plot(f0eval, label="smoothed")
+plt.plot(dataout["y"][0], label="real")
 
-# Build regressor
-l2 = losses.L2Loss()
-lamb = 0.1
-mu = 0.1
-smoothreg = regularizers.TikhonovSpace()
-globalreg = regularizers.TikhonovTime()
-regressor = regressors.DiffLocObsOnFuncReg(l2, smoothreg, globalreg, mu, lamb, kernelx, kers)
+# Operator valued kernel regression
+reg = kernel_ridge.KernelRidge(alpha=0.1)
+reg.fit(alphain, alphaout)
+testalpha = reg.predict(alphain)
 
-# Test with gradient descent
-Kxout = repmat.RepSymMatrix(Kxin, (Ntrain, Ntrain))
-gd = gradientbased.GradientDescent(0.00001, 200, 1e-5, record=True)
-obj = regressor.objective_func(dataout.Ms, dataout["y_flat"], Kxout, Ks)
-grad = regressor.objective_grad_func(dataout.Ms, dataout["y_flat"], Kxout, Ks)
-alpha0 = np.random.normal(0, 1, (Ntrain, Ntrain*nlocs))
-sol = gd(obj, grad, alpha0)
-
-# Fit regressor
-Kxout = repmat.RepSymMatrix(Kxin, (Ntrain, Ntrain))
-solu = regressor.fit(datain, dataout, Kx=Kxout, Ks=Ks)
-
-pred = regressor.predict(datain.extract_subseq(0, 1), datain["x"][0])
-plt.figure()
-plt.plot(dataout["x"][0], pred.flatten(), label="predicted")
-plt.plot(dataout["x"][0], dataout["y"][0], label="real")
-plt.title("Example of fitting on training set (without regularization)")
+f0test = param_func.ParametrizedFunc(testalpha[0], base)
+f0testeval = [f0test(x) for x in datain["x"][0]]
+plt.plot(f0testeval, label="pred")
 plt.legend()
 
-# See size of terms involved
-regressor.data_fitting(dataout.Ms, dataout["y_flat"], Kxout, Ks, alpha0)
-regressor.smoothreg(Kxout, Ks, alpha0)
-regressor.globalreg(Kxout, Ks, alpha0)
-
-# Plots
-i = 3
-plt.figure()
-plt.scatter(dataout["x"][i], dataout["y"][i])
-
-plt.figure()
-plt.scatter(dataout["x"][i], pred[i])
+# Out of sample test
+# Smoothing
+alphaintest, base = ridge_smoother(dataintest["x"], dataintest["y"])
+alphaouttest = reg.predict(alphaintest)
+f0test = param_func.ParametrizedFunc(alphaouttest[0], base)
+f0testeval = [f0test(x) for x in datain["x"][0]]
+plt.plot(f0testeval, label="pred")
+plt.plot(dataouttest["y"][0], label="true")
+plt.legend()

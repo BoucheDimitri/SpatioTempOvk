@@ -251,9 +251,12 @@ class DiffLocObsOnFuncReg:
         alpha0 = np.random.normal(0, 1, V.get_T() * V.get_barM())
         obj = self.objective_func(V.get_Ms(), V["y_flat"], Kx, Ks)
         grad = self.objective_grad_func(V.get_Ms(), V["y_flat"], Kx, Ks)
-        sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol, method=solver)
+        record = []
+        sol = optimize.minimize(fun=obj, x0=alpha0, jac=grad, tol=tol,
+                                method=solver, callback=lambda X: record.append(obj(X)))
         self.alpha = sol["x"].reshape((V.get_T(), V.get_barM()))
-        print(sol["success"])
+        sol["record"] = record
+        return sol
 
     def predict(self, Snew, Xnew):
         # Exploit sameloc=True by using the RepSymMatrix container to avoid storing a huge redundant matrix
