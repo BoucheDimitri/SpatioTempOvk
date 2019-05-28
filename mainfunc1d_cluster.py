@@ -1,16 +1,8 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import importlib
-import scipy.optimize as optimize
-import itertools
-import pandas as pd
 import os
-import time
-from functools import partial
-import operalib.ridge as ovkridge
 import syntheticdata.funcs1d as funcs1d
 import functools
-import sklearn.kernel_ridge as kernel_ridge
 import pickle
 
 import spatiotempovk.spatiotempdata as spatiotemp
@@ -21,8 +13,6 @@ import spatiotempovk.regressors as regressors
 import algebra.repeated_matrix as repmat
 import smoothing.representer as repsmooth
 import smoothing.parametrized_func as param_func
-import solvers.gradientbased as gradientbased
-import tsvalidation.sequentialval as seqval
 importlib.reload(repmat)
 importlib.reload(spatiotemp)
 importlib.reload(kernels)
