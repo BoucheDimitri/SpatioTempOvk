@@ -1,7 +1,6 @@
 import numpy as np
 import importlib
 import os
-import syntheticdata.funcs1d as funcs1d
 import functools
 import pickle
 
@@ -13,6 +12,7 @@ import spatiotempovk.regressors as regressors
 import algebra.repeated_matrix as repmat
 import smoothing.representer as repsmooth
 import smoothing.parametrized_func as param_func
+import syntheticdata.funcs1d as funcs1d
 importlib.reload(repmat)
 importlib.reload(spatiotemp)
 importlib.reload(kernels)

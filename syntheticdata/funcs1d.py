@@ -1,7 +1,5 @@
-from functools import partial
 import numpy as np
 import importlib
-import matplotlib.pyplot as plt
 
 import spatiotempovk.spatiotempdata as spatiotemp
 import spatiotempovk.kernels as kernels
@@ -34,13 +32,13 @@ def random_polys(draw_coeff_func, draw_deg_func=None, deg=None, nsim=1):
     return samples
 
 
-def plot_params_funcs(funcs, nplot, xlims, nlin=100):
-    sp = np.linspace(xlims[0], xlims[1], nlin)
-    fig, ax = plt.subplots()
-    count = 0
-    while count < nplot:
-        ax.plot(sp, [funcs[count](x) for x in sp])
-        count += 1
+# def plot_params_funcs(funcs, nplot, xlims, nlin=100):
+#     sp = np.linspace(xlims[0], xlims[1], nlin)
+#     fig, ax = plt.subplots()
+#     count = 0
+#     while count < nplot:
+#         ax.plot(sp, [funcs[count](x) for x in sp])
+#         count += 1
 
 
 def random_fourier_func(draw_coeff_func, nfreq=3, interval = (0, 1), nsim=1):
