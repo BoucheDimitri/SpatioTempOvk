@@ -11,6 +11,7 @@ import operalib.ridge as ovkridge
 import syntheticdata.funcs1d as funcs1d
 import functools
 import sklearn.kernel_ridge as kernel_ridge
+import pickle
 
 import spatiotempovk.spatiotempdata as spatiotemp
 import spatiotempovk.kernels as kernels
@@ -40,7 +41,7 @@ nlocs = 50
 locs = np.linspace(0, 1, nlocs).reshape((nlocs, 1))
 
 # Build the data
-Ntrain = 100
+Ntrain = 200
 Ntest = 20
 # Draw random Fourier functions
 fouriers = funcs1d.random_fourier_func(norm01, nfreq=2, nsim=Ntrain + Ntest)
@@ -77,34 +78,14 @@ smoothreg = regularizers.TikhonovSpace()
 globalreg = regularizers.TikhonovTime()
 regressor = regressors.DiffLocObsOnFuncReg(l2, smoothreg, globalreg, mu, lamb, kernelx, kers)
 
-# Test with gradient descent
-Kxout = repmat.RepSymMatrix(Kxin, (Ntrain, Ntrain))
-gd = gradientbased.GradientDescent(0.00001, 200, 1e-5, record=True)
-obj = regressor.objective_func(dataout.Ms, dataout["y_flat"], Kxout, Ks)
-grad = regressor.objective_grad_func(dataout.Ms, dataout["y_flat"], Kxout, Ks)
-alpha0 = np.random.normal(0, 1, (Ntrain, Ntrain*nlocs))
-sol = gd(obj, grad, alpha0)
-
 # Fit regressor
 Kxout = repmat.RepSymMatrix(Kxin, (Ntrain, Ntrain))
 solu = regressor.fit(datain, dataout, Kx=Kxout, Ks=Ks)
 
-pred = regressor.predict(datain.extract_subseq(0, 1), datain["x"][0])
-plt.figure()
-plt.plot(dataout["x"][0], pred.flatten(), label="predicted")
-plt.plot(dataout["x"][0], dataout["y"][0], label="real")
-plt.title("Example of fitting on training set (without regularization)")
-plt.legend()
+# Predictions
+predtrain = regressor.predict(datain.extract_subseq(0, 10), datain["x"][0])
+predtest = regressor.predict(dataintest, datain["x"][0])
 
-# See size of terms involved
-regressor.data_fitting(dataout.Ms, dataout["y_flat"], Kxout, Ks, alpha0)
-regressor.smoothreg(Kxout, Ks, alpha0)
-regressor.globalreg(Kxout, Ks, alpha0)
-
-# Plots
-i = 3
-plt.figure()
-plt.scatter(dataout["x"][i], dataout["y"][i])
-
-plt.figure()
-plt.scatter(dataout["x"][i], pred[i])
+# Dump results
+with open(os.getcwd() + "/output.pkl", "wb") as outfile:
+    pickle.dump((predtrain, predtest, solu, Ks, Kxout), outfile)
