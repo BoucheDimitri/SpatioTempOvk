@@ -29,12 +29,12 @@ class ParametrizedFunc:
         else:
             K = np.zeros((X.shape[0], len(self.basis)))
             for i in range(X.shape[0]):
-                K[i] = np.array([self.basis[j](X[i]) for j in range(len(self.basis))])
+                K[i] = np.array([self.basis[j](X[i]) for j in range(len(self.basis))]).flatten()
         return K
 
     def __call__(self, X):
         K = self.eval_matrix(X)
-        return K.T.dot(self.alpha)
+        return K.dot(self.alpha)
 
 
 class PolynomialBased(ParametrizedFunc):

@@ -1,5 +1,8 @@
 import numpy as np
 from geopy import distance
+from smoothing import representer
+from smoothing import fourierrandom
+from smoothing import parametrized_func
 
 
 class Kernel:
@@ -34,10 +37,158 @@ class Kernel:
         n = len(X)
         m = len(Xnew)
         Knew = np.zeros((m, n))
+        if self.normalize:
+            normsX = [self(X[i], X[i]) for i in range(n)]
+            normsXnew = [self(Xnew[i], Xnew[i]) for i in range(m)]
         for i in range(m):
             for j in range(n):
-                Knew[i, j] = self(Xnew[i], X[j])
+                k = self(Xnew[i], X[j])
+                if self.normalize:
+                    knorm = 1 / (np.sqrt(normsXnew[i]) * np.sqrt(normsX[j]))
+                    Knew[i, j] = k * knorm
+                else:
+                    Knew[i, j] = k
         return Knew.T
+
+
+class GaussianSameLoc(Kernel):
+
+    def __init__(self, sigma, normalize=False):
+        super(GaussianSameLoc, self).__init__(normalize)
+        self.sigma = sigma
+
+    def __call__(self, s0, s1):
+        return np.exp(- ((np.linalg.norm(s0[1] - s1[1])) ** 2) / (2 * self.sigma ** 2))
+
+
+class GaussianFuncKernel(Kernel):
+
+    def __init__(self, sigma, rffeats, mu, normalize=False):
+        super(GaussianFuncKernel, self).__init__(normalize)
+        self.sigma = sigma
+        self.rffeats = rffeats
+        self.smoother = fourierrandom.RFFRidgeSmoother(self.rffeats, mu)
+
+    def __call__(self, w0, w1):
+        return np.exp(- ((np.linalg.norm(w0 - w1)) ** 2) / (2 * self.sigma ** 2))
+
+    def compute_K(self, X):
+        n = len(X)
+        x = [X[i][0] for i in range(n)]
+        y = [X[i][1] for i in range(n)]
+        w, base = self.smoother(x, y)
+        K = np.zeros((n, n))
+        # Compute diagonal first for normalization
+        for i in range(n):
+            K[i, i] = self(w[i], w[i])
+        for i in range(n):
+            for j in range(i + 1, n):
+                k = self(w[i], w[j])
+                K[i, j] = k
+                K[j, i] = k
+                if self.normalize:
+                    knorm = (1 / (np.sqrt(K[i, i]) * np.sqrt(K[j, j])))
+                    K[i, j] *= knorm
+                    K[j, i] *= knorm
+        if self.normalize:
+            for i in range(n):
+                K[i, i] = 1.0
+        return K
+
+    def compute_Knew(self, X, Xnew):
+        n = len(X)
+        m = len(Xnew)
+        x = [X[i][0] for i in range(n)]
+        y = [X[i][1] for i in range(n)]
+        xnew = [Xnew[i][0] for i in range(m)]
+        ynew = [Xnew[i][1] for i in range(m)]
+        w, base = self.smoother(x, y)
+        wnew, basenew = self.smoother(xnew, ynew)
+        Knew = np.zeros((m, n))
+        if self.normalize:
+            normsX = [self(w[i], w[i]) for i in range(n)]
+            normsXnew = [self(wnew[i], wnew[i]) for i in range(m)]
+        for i in range(m):
+            for j in range(n):
+                k = self(wnew[i], w[j])
+                if self.normalize:
+                    knorm = 1 / (np.sqrt(normsXnew[i]) * np.sqrt(normsX[j]))
+                    Knew[i, j] = k * knorm
+                else:
+                    Knew[i, j] = k
+        return Knew.T
+
+
+#
+# class GaussianFuncKernel(Kernel):
+#
+#     def __init__(self, kernelx, mu, sigma=1, bounds=(0, 1), precision=100, normalize=False):
+#         super(GaussianFuncKernel, self).__init__(normalize)
+#         self.bounds = bounds
+#         self.precision = precision
+#         self.evalgrid = np.linspace(bounds[0], bounds[1], precision)
+#         self.sigma = sigma
+#         self.kernelx = kernelx
+#         self.mu = mu
+#
+#     def __call__(self, f, g):
+#         fvec = np.array([f(x) for x in self.evalgrid])
+#         gvec = np.array([g(x) for x in self.evalgrid])
+#         return np.exp(- ((np.linalg.norm(fvec - gvec)) ** 2) / (2 * self.sigma ** 2))
+#
+#     def compute_K(self, X):
+#         ridgesmoother = representer.RidgeSmoother(self.kernelx, self.mu)
+#         n = len(X)
+#         x = [X[i][0] for i in range(n)]
+#         y = [X[i][1] for i in range(n)]
+#         alpha, base = ridgesmoother(x, y)
+#         fs = [parametrized_func.ParametrizedFunc(alpha[i], base) for i in range(n)]
+#         K = np.zeros((n, n))
+#         # Compute diagonal first for normalization
+#         for i in range(n):
+#             K[i, i] = self(fs[i], fs[i])
+#         for i in range(n):
+#             for j in range(i + 1, n):
+#                 k = self(fs[i], fs[j])
+#                 K[i, j] = k
+#                 K[j, i] = k
+#                 if self.normalize:
+#                     knorm = (1 / (np.sqrt(K[i, i]) * np.sqrt(K[j, j])))
+#                     K[i, j] *= knorm
+#                     K[j, i] *= knorm
+#         if self.normalize:
+#             for i in range(n):
+#                 K[i, i] = 1.0
+#         return K
+#
+#     def compute_Knew(self, X, Xnew):
+#         ridgesmoother = representer.RidgeSmoother(self.kernelx, self.mu)
+#         n = len(X)
+#         m = len(Xnew)
+#         x = [X[i][0] for i in range(n)]
+#         y = [X[i][1] for i in range(n)]
+#         xnew = [X[i][0] for i in range(m)]
+#         ynew = [X[i][1] for i in range(m)]
+#         alpha, base = ridgesmoother(x, y)
+#         alphanew, basenew =
+#         fs = [parametrized_func.ParametrizedFunc(alpha[i], base) for i in range(n)]
+#         K = np.zeros((n, n))
+#         # Compute diagonal first for normalization
+#         for i in range(n):
+#             K[i, i] = self(fs[i], fs[i])
+#         for i in range(n):
+#             for j in range(i + 1, n):
+#                 k = self(fs[i], fs[j])
+#                 K[i, j] = k
+#                 K[j, i] = k
+#                 if self.normalize:
+#                     knorm = (1 / (np.sqrt(K[i, i]) * np.sqrt(K[j, j])))
+#                     K[i, j] *= knorm
+#                     K[j, i] *= knorm
+#         if self.normalize:
+#             for i in range(n):
+#                 K[i, i] = 1.0
+#         return K
 
 
 class ConvKernel(Kernel):
