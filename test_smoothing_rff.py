@@ -48,7 +48,7 @@ with open(os.getcwd() + "/dumps/datasets.pkl", "rb") as i:
     datain, dataout, dataintest, dataouttest = pickle.load(i)
 
 sigma = 10
-mu = 1
+mu = 0.05
 D = 40
 d = 1
 

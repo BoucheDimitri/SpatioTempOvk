@@ -71,70 +71,40 @@ ax[0].set_title("Function noisy evaluations")
 ax[1].set_title("Derivative noisy evaluations")
 
 
-# Kernels
-kernelx = kernels.GaussianKernel(sigma=0.075)
-Kxin = kernelx.compute_K(datain["x_flat"])
-# rffeats = rffridge.RandomFourierFeatures(sigma=10, D=40, d=1)
-# kers = kernels.GaussianFuncKernel(5, rffeats, mu=0.05)
-# Ks = kers.compute_K(datain["xy_tuple"])
-kernely = kernels.GaussianKernel(sigma=0.5)
-Kyin = kernely.compute_K(datain["y_flat"])
-kers = kernels.ConvKernel(kernelx, kernely, Kxin, Kyin, sameloc=False)
-Ks = kers.compute_K_from_mat(datain.Ms)
+with open(os.getcwd() + "/dumps/lamb00001_mu001_funker.pkl", "rb") as i:
+    regressor0 = pickle.load(i)
 
-# Build regressor
-l2 = losses.L2Loss()
-lamb = 0.01
-mu = 0.01
-smoothreg = regularizers.TikhonovSpace()
-globalreg = regularizers.TikhonovTime()
-regressor = regressors.DiffLocObsOnFuncReg(l2, smoothreg, globalreg, mu, lamb, kernelx, kers)
+with open(os.getcwd() + "/dumps/lamb001_mu00001_funker.pkl", "rb") as i:
+    regressor1 = pickle.load(i)
 
-# # Test with gradient descent
-# Kxout = repmat.RepSymMatrix(Kxin, (Ntrain, Ntrain))
-# gd = gradientbased.GradientDescent(0.00001, 10, 1e-5, record=True)
-# obj = regressor.objective_func(dataout.Ms, dataout["y_flat"], Kxout, Ks)
-# grad = regressor.objective_grad_func(dataout.Ms, dataout["y_flat"], Kxout, Ks)
-# alpha0 = np.random.normal(0, 1, (Ntrain, Ntrain*nlocs))
-# sol = gd(obj, grad, alpha0)
+with open(os.getcwd() + "/dumps/lamb001_mu001_funker.pkl", "rb") as i:
+    regressor2 = pickle.load(i)
 
-# Fit regressor
-# Kxout = repmat.RepSymMatrix(Kxin, (Ntrain, Ntrain))
-Kxout = kernelx.compute_K(dataout["x_flat"])
-solu = regressor.fit(datain, dataout, Kx=Kxout, Ks=Ks, tol=1e-3)
+with open(os.getcwd() + "/dumps/noreg_convker.pkl", "rb") as i:
+    regressor3 = pickle.load(i)
 
-# Pickle regressor
-with open(os.getcwd() + "/dumps/lamb001_mu001_convker.pkl", "wb") as o:
-    pickle.dump(regressor, o, pickle.HIGHEST_PROTOCOL)
 
-# Or load dataset
-with open(os.getcwd() + "/dumps/lamb00001_mu01_funker.pkl", "rb") as i:
-    regressor = pickle.load(i)
-
-pred = regressor.predict(datain.extract_subseq(0, 1), datain["x"][0])
-plt.figure()
-plt.plot(dataout["x"][0], pred.flatten(), label="predicted")
-plt.plot(dataout["x"][0], dataout["y"][0], label="real")
-plt.title("Example of fitting on training set (without regularization)")
-plt.legend()
-
+fig, axes = plt.subplots(ncols=2, nrows=2)
 # Prediction on test set
-predtest = regressor.predict(dataintest.extract_subseq(2, 3), test_locs)
-plt.figure()
-plt.plot(test_locs, predtest.flatten(), label="predicted")
-plt.plot(test_locs, dataouttest["y"][2], label="real")
+predtest0 = regressor0.predict(dataintest.extract_subseq(0, 1), test_locs)
+predtest1 = regressor1.predict(dataintest.extract_subseq(0, 1), test_locs)
+predtest2 = regressor2.predict(dataintest.extract_subseq(0, 1), test_locs)
+predtest3 = regressor3.predict(dataintest.extract_subseq(0, 1), test_locs)
+axes[0, 0].plot(test_locs, predtest0.flatten(), label="predicted")
+axes[0, 0].plot(test_locs, dataouttest["y"][0], label="real")
+axes[0, 0].set_title("$k_{func}$ $\mu=0.01$ $\lambda=0.0001$")
+axes[0, 0].legend()
+axes[0, 1].plot(test_locs, predtest1.flatten(), label="predicted")
+axes[0, 1].plot(test_locs, dataouttest["y"][0], label="real")
+axes[0, 1].set_title("$k_{func}$ $\mu=0.0001$ $\lambda=0.01$")
+# axes[0, 1].legend()
+axes[1, 0].plot(test_locs, predtest2.flatten(), label="predicted")
+axes[1, 0].plot(test_locs, dataouttest["y"][0], label="real")
+axes[1, 0].set_title("$k_{func}$ $\mu=0.01$ $\lambda=0.01$")
+# axes[1, 0].legend()
+axes[1, 1].plot(test_locs, predtest3.flatten(), label="predicted")
+axes[1, 1].plot(test_locs, dataouttest["y"][0], label="real")
+axes[1, 1].set_title("$k_{conv}$ $\mu=0$ $\lambda=0$")
+# axes[1, 1].legend()
 # plt.title("Example on test set - Convolutional kernel - No regularization")
-plt.legend()
 
-# See size of terms involved
-regressor.data_fitting(dataout.Ms, dataout["y_flat"], Kxout, Ks, alpha0)
-regressor.smoothreg(Kxout, Ks, alpha0)
-regressor.globalreg(Kxout, Ks, alpha0)
-
-# Plots
-i = 3
-plt.figure()
-plt.scatter(dataout["x"][i], dataout["y"][i])
-
-plt.figure()
-plt.scatter(dataout["x"][i], pred[i])
