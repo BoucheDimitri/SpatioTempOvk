@@ -35,7 +35,7 @@ importlib.reload(param_func)
 importlib.reload(funcs1d)
 
 # Plot parameters
-plt.rcParams.update({"font.size": 30})
+plt.rcParams.update({"font.size": 25})
 plt.rcParams.update({"lines.linewidth": 5})
 plt.rcParams.update({"lines.markersize": 10})
 
@@ -70,41 +70,55 @@ for i in range(2):
 ax[0].set_title("Function noisy evaluations")
 ax[1].set_title("Derivative noisy evaluations")
 
-
-with open(os.getcwd() + "/dumps/lamb00001_mu001_funker.pkl", "rb") as i:
+with open(os.getcwd() + "/dumps/lamb0_mu001_funker.pkl", "rb") as i:
     regressor0 = pickle.load(i)
 
-with open(os.getcwd() + "/dumps/lamb001_mu00001_funker.pkl", "rb") as i:
+with open(os.getcwd() + "/dumps/lamb00001_mu001_funker.pkl", "rb") as i:
     regressor1 = pickle.load(i)
 
 with open(os.getcwd() + "/dumps/lamb001_mu001_funker.pkl", "rb") as i:
     regressor2 = pickle.load(i)
 
-with open(os.getcwd() + "/dumps/noreg_convker.pkl", "rb") as i:
+with open(os.getcwd() + "/dumps/lamb0_mu001_convker.pkl", "rb") as i:
     regressor3 = pickle.load(i)
 
+with open(os.getcwd() + "/dumps/lamb00001_mu001_convker.pkl", "rb") as i:
+    regressor4 = pickle.load(i)
 
-fig, axes = plt.subplots(ncols=2, nrows=2)
+with open(os.getcwd() + "/dumps/lamb001_mu001_convker.pkl", "rb") as i:
+    regressor5 = pickle.load(i)
+
+i = 1
+fig, axes = plt.subplots(ncols=3, nrows=2)
 # Prediction on test set
-predtest0 = regressor0.predict(dataintest.extract_subseq(0, 1), test_locs)
-predtest1 = regressor1.predict(dataintest.extract_subseq(0, 1), test_locs)
-predtest2 = regressor2.predict(dataintest.extract_subseq(0, 1), test_locs)
-predtest3 = regressor3.predict(dataintest.extract_subseq(0, 1), test_locs)
+predtest0 = regressor0.predict(dataintest.extract_subseq(i, i+1), test_locs)
+predtest1 = regressor1.predict(dataintest.extract_subseq(i, i+1), test_locs)
+predtest2 = regressor2.predict(dataintest.extract_subseq(i, i+1), test_locs)
+predtest3 = regressor3.predict(dataintest.extract_subseq(i, i+1), test_locs)
+predtest4 = regressor4.predict(dataintest.extract_subseq(i, i+1), test_locs)
+predtest5 = regressor5.predict(dataintest.extract_subseq(i, i+1), test_locs)
+
 axes[0, 0].plot(test_locs, predtest0.flatten(), label="predicted")
-axes[0, 0].plot(test_locs, dataouttest["y"][0], label="real")
-axes[0, 0].set_title("$k_{func}$ $\mu=0.01$ $\lambda=0.0001$")
+axes[0, 0].plot(test_locs, dataouttest["y"][i], label="real")
+axes[0, 0].set_title("$k_{func}$ $\mu=0.01$ $\lambda=0$")
 axes[0, 0].legend()
 axes[0, 1].plot(test_locs, predtest1.flatten(), label="predicted")
-axes[0, 1].plot(test_locs, dataouttest["y"][0], label="real")
-axes[0, 1].set_title("$k_{func}$ $\mu=0.0001$ $\lambda=0.01$")
+axes[0, 1].plot(test_locs, dataouttest["y"][i], label="real")
+axes[0, 1].set_title("$k_{func}$ $\mu=0.01$ $\lambda=0.0001$")
+axes[0, 2].plot(test_locs, predtest2.flatten(), label="predicted")
+axes[0, 2].plot(test_locs, dataouttest["y"][i], label="real")
+axes[0, 2].set_title("$k_{func}$ $\mu=0.01$ $\lambda=0.01$")
 # axes[0, 1].legend()
-axes[1, 0].plot(test_locs, predtest2.flatten(), label="predicted")
-axes[1, 0].plot(test_locs, dataouttest["y"][0], label="real")
-axes[1, 0].set_title("$k_{func}$ $\mu=0.01$ $\lambda=0.01$")
+axes[1, 0].plot(test_locs, predtest3.flatten(), label="predicted")
+axes[1, 0].plot(test_locs, dataouttest["y"][i], label="real")
+axes[1, 0].set_title("$k_{conv}$ $\mu=0.01$ $\lambda=0$")
 # axes[1, 0].legend()
-axes[1, 1].plot(test_locs, predtest3.flatten(), label="predicted")
-axes[1, 1].plot(test_locs, dataouttest["y"][0], label="real")
-axes[1, 1].set_title("$k_{conv}$ $\mu=0$ $\lambda=0$")
+axes[1, 1].plot(test_locs, predtest4.flatten(), label="predicted")
+axes[1, 1].plot(test_locs, dataouttest["y"][i], label="real")
+axes[1, 1].set_title("$k_{conv}$ $\mu=0.01$ $\lambda=0.0001$")
+axes[1, 2].plot(test_locs, predtest5.flatten(), label="predicted")
+axes[1, 2].plot(test_locs, dataouttest["y"][i], label="real")
+axes[1, 2].set_title("$k_{conv}$ $\mu=0.01$ $\lambda=0.01$")
 # axes[1, 1].legend()
 # plt.title("Example on test set - Convolutional kernel - No regularization")
 

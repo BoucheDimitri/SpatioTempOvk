@@ -7,11 +7,15 @@ from smoothing import parametrized_func
 
 class Kernel:
 
-    def __init__(self, normalize=False):
+    def __init__(self, func=None, normalize=False):
         self.normalize = normalize
+        self.func=func
 
     def __call__(self, x0, x1):
-        pass
+        if self.func is not None:
+            return self.func(x0, x1)
+        else:
+            pass
 
     def compute_K(self, X):
         n = len(X)

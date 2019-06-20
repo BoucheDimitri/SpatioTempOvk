@@ -63,28 +63,31 @@ test_locs = np.linspace(0, 1, 200).reshape((200, 1))
 with open(os.getcwd() + "/dumps/datasets.pkl", "rb") as i:
     datain, dataout, dataintest, dataouttest = pickle.load(i)
 
-fig, ax = plt.subplots(ncols=2)
-for i in range(2):
-    ax[0].scatter(datain["x"][i].flatten(), datain["y"][i])
-    ax[1].scatter(dataout["x"][i].flatten(), dataout["y"][i])
-ax[0].set_title("Function noisy evaluations")
-ax[1].set_title("Derivative noisy evaluations")
+i=0
+j=2
+fig, ax = plt.subplots(nrows=2, ncols=2)
+ax[0, 0].scatter(datain["x"][i].flatten(), datain["y"][i])
+ax[0, 1].scatter(dataout["x"][i].flatten(), dataout["y"][i])
+ax[0, 0].set_title("Function noisy evaluations")
+ax[0, 1].set_title("Derivative noisy evaluations")
+ax[1, 0].scatter(datain["x"][j].flatten(), datain["y"][j])
+ax[1, 1].scatter(dataout["x"][j].flatten(), dataout["y"][j])
 
 
 # Kernels
 kernelx = kernels.GaussianKernel(sigma=0.075)
 Kxin = kernelx.compute_K(datain["x_flat"])
-# rffeats = rffridge.RandomFourierFeatures(sigma=10, D=40, d=1)
-# kers = kernels.GaussianFuncKernel(5, rffeats, mu=0.05)
-# Ks = kers.compute_K(datain["xy_tuple"])
-kernely = kernels.GaussianKernel(sigma=0.5)
-Kyin = kernely.compute_K(datain["y_flat"])
-kers = kernels.ConvKernel(kernelx, kernely, Kxin, Kyin, sameloc=False)
-Ks = kers.compute_K_from_mat(datain.Ms)
+rffeats = rffridge.RandomFourierFeatures(sigma=10, D=40, d=1)
+kers = kernels.GaussianFuncKernel(5, rffeats, mu=0.05)
+Ks = kers.compute_K(datain["xy_tuple"])
+# kernely = kernels.GaussianKernel(sigma=0.5)
+# Kyin = kernely.compute_K(datain["y_flat"])
+# kers = kernels.ConvKernel(kernelx, kernely, Kxin, Kyin, sameloc=False)
+# Ks = kers.compute_K_from_mat(datain.Ms)
 
 # Build regressor
 l2 = losses.L2Loss()
-lamb = 0.01
+lamb = 0.001
 mu = 0.01
 smoothreg = regularizers.TikhonovSpace()
 globalreg = regularizers.TikhonovTime()
@@ -104,11 +107,11 @@ Kxout = kernelx.compute_K(dataout["x_flat"])
 solu = regressor.fit(datain, dataout, Kx=Kxout, Ks=Ks, tol=1e-3)
 
 # Pickle regressor
-with open(os.getcwd() + "/dumps/lamb001_mu001_convker.pkl", "wb") as o:
+with open(os.getcwd() + "/dumps/lamb0001_mu001_funker.pkl", "wb") as o:
     pickle.dump(regressor, o, pickle.HIGHEST_PROTOCOL)
 
 # Or load dataset
-with open(os.getcwd() + "/dumps/lamb00001_mu01_funker.pkl", "rb") as i:
+with open(os.getcwd() + "/dumps/lamb001_mu001_convker.pkl", "rb") as i:
     regressor = pickle.load(i)
 
 pred = regressor.predict(datain.extract_subseq(0, 1), datain["x"][0])
@@ -119,10 +122,11 @@ plt.title("Example of fitting on training set (without regularization)")
 plt.legend()
 
 # Prediction on test set
-predtest = regressor.predict(dataintest.extract_subseq(2, 3), test_locs)
+i = 1
+predtest = regressor.predict(dataintest.extract_subseq(i, i+1), test_locs)
 plt.figure()
 plt.plot(test_locs, predtest.flatten(), label="predicted")
-plt.plot(test_locs, dataouttest["y"][2], label="real")
+plt.plot(test_locs, dataouttest["y"][i], label="real")
 # plt.title("Example on test set - Convolutional kernel - No regularization")
 plt.legend()
 
