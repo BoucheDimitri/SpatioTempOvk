@@ -95,12 +95,14 @@ smoother = fourierrandom.RFFRidgeSmoother(rffeats, mu=0.05)
 
 coefin, basisin = smoother(datain["x"], datain["y"])
 coefout, basisout = smoother(dataout["x"], dataout["y"])
+coefintest, basisintest = smoother(dataintest["x"], dataintest["y"])
+coefouttest, basisouttest = smoother(dataouttest["x"], dataouttest["y"])
 
 
 B = np.eye(D)
 kerx = kernels.GaussianKernel(sigma=5)
 
-test = SeparableOVKRidge(kerx, B, 0.01)
+test = SeparableOVKRidge(kerx, B, 0.005)
 
 test.fit(coefin, coefout)
 
@@ -111,5 +113,33 @@ parafunc = param_func.ParametrizedFunc(pred, basisout)
 x0 = dataout["x"][0]
 y0 = dataout["y"][0]
 
+plt.figure()
 plt.plot(x0.flatten(), parafunc(x0))
 plt.plot(x0.flatten(), y0)
+
+i=1
+predtest = test.predict(coefintest[i].reshape((1, 40)))
+parafunc = param_func.ParametrizedFunc(predtest, basisin)
+
+x0 = dataouttest["x"][i]
+y0 = dataouttest["y"][i]
+
+ypred4 = parafunc(x0)
+
+
+fig, ax = plt.subplots(ncols=3)
+ax[0].plot(x0.flatten(), ypred1, label="predicted")
+ax[0].plot(x0.flatten(), y0, label="True")
+ax[0].legend()
+ax[0].set_title("$\lambda=1$")
+ax[1].plot(x0.flatten(), ypred2, label="predicted")
+ax[1].plot(x0.flatten(), y0, label="True")
+ax[1].set_title("$\lambda=0.1$")
+ax[2].plot(x0.flatten(), ypred3, label="predicted")
+ax[2].plot(x0.flatten(), y0, label="True")
+ax[2].set_title("$\lambda=0.01$")
+# ax[3].plot(x0.flatten(), ypred4, label="predicted")
+# ax[3].plot(x0.flatten(), y0, label="True")
+# ax[3].set_title("$\lambda=0.005$")
+
+
