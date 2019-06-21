@@ -23,11 +23,14 @@ class SeparableOVKRidge:
             self.K = K
         else:
             self.K = self.k.compute_K(X)
-        self.alpha = dlyap(-self.K/self.lamb, self.B, Y/self.lamb)
+        n = X.shape[0]
+        self.alpha = dlyap(-self.K/(self.lamb * n), self.B.T, Y/(self.lamb * n))
 
     def predict(self, Xnew):
         Knew = self.k.compute_Knew(self.X, Xnew)
         KoB = np.kron(Knew, self.B)
+        return KoB.T.dot(self.alpha.flatten(order="C"))
+        # return KoB.dot(self.alpha.flatten(order="F"))
 
 
 
@@ -95,9 +98,18 @@ coefout, basisout = smoother(dataout["x"], dataout["y"])
 
 
 B = np.eye(D)
-kerx = kernels.GaussianKernel(sigma=1)
+kerx = kernels.GaussianKernel(sigma=5)
 
-test = SeparableOVKRidge(kerx, B, 1)
+test = SeparableOVKRidge(kerx, B, 0.01)
 
 test.fit(coefin, coefout)
 
+pred = test.predict(coefin[0].reshape((1, 40)))
+
+parafunc = param_func.ParametrizedFunc(pred, basisout)
+
+x0 = dataout["x"][0]
+y0 = dataout["y"][0]
+
+plt.plot(x0.flatten(), parafunc(x0))
+plt.plot(x0.flatten(), y0)
