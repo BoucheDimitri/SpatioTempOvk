@@ -35,6 +35,7 @@ importlib.reload(repsmooth)
 importlib.reload(param_func)
 importlib.reload(funcs1d)
 importlib.reload(approxsamponfunc)
+import approxkernelridge.rffridge as rffridge
 
 # Plot parameters
 plt.rcParams.update({"font.size": 30})
@@ -77,19 +78,23 @@ ax[1, 1].scatter(dataout["x"][j].flatten(), dataout["y"][j])
 
 
 # Kernels
-sigmarff=10
+sigmarff=15
 D = 100
 kers = kernels.GaussianSameLoc(sigma=10)
 Ks = kers.compute_K(datain["xy_tuple"])
+plt.imshow(Ks)
+rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
 # kernely = kernels.GaussianKernel(sigma=0.5)
 # Kyin = kernely.compute_K(datain["y_flat"])
 # kers = kernels.ConvKernel(kernelx, kernely, Kxin, Kyin, sameloc=False)
 # Ks = kers.compute_K_from_mat(datain.Ms)
+test = rffs.eval(dataout["x"][0])
+plt.imshow(test.dot(test.T))
 
 # Build regressor
 l2 = losses.L2Loss()
-lamb = 0.00005
-reg = approxsamponfunc.RFFSampleinFuncout(D=D, sigmarff=sigmarff, loss=l2, lamb=lamb, d=1, kers=kers)
+lamb = 0.001
+reg = approxsamponfunc.RFFSampleinFuncout(loss=l2, lamb=lamb, kers=kers, rffs=rffs)
 
 
 # # Test with gradient descent
@@ -101,7 +106,7 @@ reg = approxsamponfunc.RFFSampleinFuncout(D=D, sigmarff=sigmarff, loss=l2, lamb=
 
 # Fit regressor
 solu = reg.fit(datain, dataout, Ks=Ks, tol=1e-4)
-i = 1
+i = 2
 pred = reg.predict(dataintest.extract_subseq(i, i+1), locs)
 
 plt.figure()
@@ -111,39 +116,23 @@ plt.title("Example of fitting on test set")
 plt.legend()
 
 
-# # Pickle regressor
-# with open(os.getcwd() + "/dumps/lamb0001_mu001_funker.pkl", "wb") as o:
-#     pickle.dump(regressor, o, pickle.HIGHEST_PROTOCOL)
-#
-# # Or load dataset
-# with open(os.getcwd() + "/dumps/lamb001_mu001_convker.pkl", "rb") as i:
-#     regressor = pickle.load(i)
+lambs = [0.1, 0.02, 0.001, 0.0001]
+regs = []
+preds = []
+j = 2
+for i in range(len(lambs)):
+    regs.append(approxsamponfunc.RFFSampleinFuncout(loss=l2, lamb=lambs[i], kers=kers, rffs=rffs))
+    solu = regs[i].fit(datain, dataout, Ks=Ks, tol=1e-4)
+    preds.append(regs[i].predict(dataintest.extract_subseq(j, j+1), locs))
 
-pred = regressor.predict(datain.extract_subseq(0, 1), datain["x"][0])
-plt.figure()
-plt.plot(dataout["x"][0], pred.flatten(), label="predicted")
-plt.plot(dataout["x"][0], dataout["y"][0], label="real")
-plt.title("Example of fitting on training set (without regularization)")
-plt.legend()
+fig, axes = plt.subplots(ncols=4)
+for i in range(len(lambs)):
+    axes[i].plot(locs.flatten(), preds[i].flatten(), label="predicted")
+    axes[i].plot(locs.flatten(), dataouttest["y"][j], label="real")
+    axes[i].set_title("$\lambda=$" + str(lambs[i]))
+    if i == 0:
+        axes[i].legend()
 
-# Prediction on test set
-i = 1
-predtest = regressor.predict(dataintest.extract_subseq(i, i+1), test_locs)
-plt.figure()
-plt.plot(test_locs, predtest.flatten(), label="predicted")
-plt.plot(test_locs, dataouttest["y"][i], label="real")
-# plt.title("Example on test set - Convolutional kernel - No regularization")
-plt.legend()
 
-# See size of terms involved
-regressor.data_fitting(dataout.Ms, dataout["y_flat"], Kxout, Ks, alpha0)
-regressor.smoothreg(Kxout, Ks, alpha0)
-regressor.globalreg(Kxout, Ks, alpha0)
 
-# Plots
-i = 3
-plt.figure()
-plt.scatter(dataout["x"][i], dataout["y"][i])
 
-plt.figure()
-plt.scatter(dataout["x"][i], pred[i])

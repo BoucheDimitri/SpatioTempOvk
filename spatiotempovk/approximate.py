@@ -2,16 +2,12 @@ import numpy as np
 import scipy.optimize as optimize
 import functools
 
-import algebra.repeated_matrix as repmat
-import spatiotempovk.spatiotempdata as spatiotempdata
-import approxkernelridge.rffridge as rff
-
 
 class RFFSampleinFuncout:
 
-    def __init__(self, loss, lamb, kers, sigmarff, D, d):
+    def __init__(self, loss, lamb, kers, rffs):
         self.loss = loss
-        self.rffs = rff.RandomFourierFeatures(sigmarff, D, d)
+        self.rffs = rffs
         self.kers = kers
         self.lamb = lamb
         self.training_input = None

@@ -23,6 +23,7 @@ class RandomFourierFeatures:
         return [self.get_feature(i) for i in range(self.D)]
 
 
+
 class RFFRidge:
 
     def __init__(self, lamb, rffeats):
