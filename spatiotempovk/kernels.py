@@ -9,7 +9,7 @@ class Kernel:
 
     def __init__(self, func=None, normalize=False):
         self.normalize = normalize
-        self.func=func
+        self.func = func
 
     def __call__(self, x0, x1):
         if self.func is not None:

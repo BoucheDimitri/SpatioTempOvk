@@ -6,6 +6,9 @@ import pandas as pd
 
 path = os.getcwd() + "/dataspeech/"
 
+tv = pd.read_csv(path + "beautiful_TV.csv", header=None).values
+a = pd.read_csv(path + "beautiful.csv", header=None).values
+
 y, sr = librosa.load(path + 'beautiful.wav')
 tab = pd.read_csv(path + "beautiful.csv", header=None)
 
