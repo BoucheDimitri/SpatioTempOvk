@@ -84,9 +84,8 @@ Ks = kers.compute_K(Xtrain["xy_tuple"])
 rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
 
 
-
-mu_grid = [0.01, 0.1]
-lamb_grid = [0.01, 0.1]
+mu_grid = [0.0001, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]
+lamb_grid = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1]
 l2 = losses.L2Loss()
 
 scores = np.zeros((len(lamb_grid), len(mu_grid)))
