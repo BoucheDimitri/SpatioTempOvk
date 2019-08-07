@@ -1,7 +1,5 @@
 import numpy as np
 from sklearn.linear_model import Ridge
-import matplotlib.pyplot as plt
-from functools import partial
 
 
 class RandomFourierFeatures:
