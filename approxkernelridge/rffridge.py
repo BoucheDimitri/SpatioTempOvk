@@ -23,7 +23,6 @@ class RandomFourierFeatures:
         return [self.get_feature(i) for i in range(self.D)]
 
 
-
 class RFFRidge:
 
     def __init__(self, lamb, rffeats):
@@ -40,17 +39,3 @@ class RFFRidge:
     def predict(self, X):
         Z = self.rffeats.eval(X)
         return Z.dot(self.w)
-
-
-# n = 10000
-# samp = np.linspace(0, 1, n)
-# y = np.array([0.5 * np.cos(2 * np.pi * x) + 0.5 * np.cos(4* np.pi * x) + np.random.normal(0, 0.1) for x in samp]).reshape((n, 1))
-# X = samp.reshape((n, 1))
-#
-# feats = RandomFourierFeatures(10, 50, 1)
-# test = RFFRidge(1, feats)
-# test.fit(X, y)
-# ypred = test.predict(X)
-#
-# plt.plot(samp, ypred)
-# plt.scatter(samp, y)
