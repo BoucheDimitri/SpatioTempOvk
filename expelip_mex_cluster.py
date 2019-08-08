@@ -1,7 +1,6 @@
 import numpy as np
 import importlib
 import pandas as pd
-import syntheticdata.funcs1d as funcs1d
 import os
 import pickle
 
@@ -14,7 +13,6 @@ import algebra.repeated_matrix as repmat
 import smoothing.representer as repsmooth
 import smoothing.parametrized_func as param_func
 import spatiotempovk.dictout as dictout
-import approxkernelridge.rffridge as rffridge
 import spatiotempovk.approximate as approxsamponfunc
 import basisexpansion.funcdicts as funcdicts
 import basisexpansion.expandedregs as expregs
@@ -26,7 +24,6 @@ importlib.reload(regularizers)
 importlib.reload(regressors)
 importlib.reload(repsmooth)
 importlib.reload(param_func)
-importlib.reload(funcs1d)
 importlib.reload(approxsamponfunc)
 importlib.reload(dictout)
 importlib.reload(expregs)
