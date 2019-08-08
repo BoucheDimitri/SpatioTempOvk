@@ -2,6 +2,7 @@ import numpy as np
 from geopy import distance
 from smoothing import representer
 from smoothing import fourierrandom
+from smoothing import expandedridgesmoother as expridgesmoother
 from smoothing import parametrized_func
 
 
@@ -65,13 +66,71 @@ class GaussianSameLoc(Kernel):
         return np.exp(- ((np.linalg.norm(s0[1] - s1[1])) ** 2) / (2 * self.sigma ** 2))
 
 
-class GaussianFuncKernel(Kernel):
+class GaussianRFFSmoothKernel(Kernel):
 
     def __init__(self, sigma, rffeats, mu, normalize=False):
-        super(GaussianFuncKernel, self).__init__(normalize)
+        super(GaussianRFFSmoothKernel, self).__init__(normalize)
         self.sigma = sigma
         self.rffeats = rffeats
         self.smoother = fourierrandom.RFFRidgeSmoother(self.rffeats, mu)
+
+    def __call__(self, w0, w1):
+        return np.exp(- ((np.linalg.norm(w0 - w1)) ** 2) / (2 * self.sigma ** 2))
+
+    def compute_K(self, X):
+        n = len(X)
+        x = [X[i][0] for i in range(n)]
+        y = [X[i][1] for i in range(n)]
+        w, base = self.smoother(x, y)
+        K = np.zeros((n, n))
+        # Compute diagonal first for normalization
+        for i in range(n):
+            K[i, i] = self(w[i], w[i])
+        for i in range(n):
+            for j in range(i + 1, n):
+                k = self(w[i], w[j])
+                K[i, j] = k
+                K[j, i] = k
+                if self.normalize:
+                    knorm = (1 / (np.sqrt(K[i, i]) * np.sqrt(K[j, j])))
+                    K[i, j] *= knorm
+                    K[j, i] *= knorm
+        if self.normalize:
+            for i in range(n):
+                K[i, i] = 1.0
+        return K
+
+    def compute_Knew(self, X, Xnew):
+        n = len(X)
+        m = len(Xnew)
+        x = [X[i][0] for i in range(n)]
+        y = [X[i][1] for i in range(n)]
+        xnew = [Xnew[i][0] for i in range(m)]
+        ynew = [Xnew[i][1] for i in range(m)]
+        w, base = self.smoother(x, y)
+        wnew, basenew = self.smoother(xnew, ynew)
+        Knew = np.zeros((m, n))
+        if self.normalize:
+            normsX = [self(w[i], w[i]) for i in range(n)]
+            normsXnew = [self(wnew[i], wnew[i]) for i in range(m)]
+        for i in range(m):
+            for j in range(n):
+                k = self(wnew[i], w[j])
+                if self.normalize:
+                    knorm = 1 / (np.sqrt(normsXnew[i]) * np.sqrt(normsX[j]))
+                    Knew[i, j] = k * knorm
+                else:
+                    Knew[i, j] = k
+        return Knew.T
+
+
+class GaussianFuncKernel(Kernel):
+
+    def __init__(self, sigma, funcdict, mu, normalize=False):
+        super(GaussianFuncKernel, self).__init__(normalize)
+        self.sigma = sigma
+        self.funcdict = funcdict
+        self.smoother = expridgesmoother.ExpRidgeSmoother(self.funcdict, mu)
 
     def __call__(self, w0, w1):
         return np.exp(- ((np.linalg.norm(w0 - w1)) ** 2) / (2 * self.sigma ** 2))

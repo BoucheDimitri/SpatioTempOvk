@@ -18,7 +18,7 @@ import spatiotempovk.dictout as dictout
 import approxkernelridge.rffridge as rffridge
 import spatiotempovk.approximate as approxsamponfunc
 import basisexpansion.funcdicts as funcdicts
-import basisexpansion.expandedregs as expridge
+import basisexpansion.expandedregs as expregs
 importlib.reload(repmat)
 importlib.reload(spatiotemp)
 importlib.reload(kernels)
@@ -30,7 +30,7 @@ importlib.reload(param_func)
 importlib.reload(funcs1d)
 importlib.reload(approxsamponfunc)
 importlib.reload(dictout)
-importlib.reload(expridge)
+importlib.reload(expregs)
 importlib.reload(funcdicts)
 
 
@@ -57,13 +57,14 @@ def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, nois
 
 # ################### LOAD THE DATA ####################################################################################
 path = os.getcwd() + "/datalip/"
-emg = pd.read_csv(path + "EMG.csv", header=None).values
-lipacc = pd.read_csv(path + "LipAcc.csv", header=None).values
+shuffle_inds = np.random.choice(32, 32, replace=False)
+emg = pd.read_csv(path + "EMG.csv", header=None).values[:, shuffle_inds]
+lipacc = pd.read_csv(path + "LipAcc.csv", header=None).values[:, shuffle_inds]
 
 # Plot data
 plt.figure()
 for i in range(32):
-    plt.plot(emg[:, i])
+    plt.plot(lipacc[:, i])
 
 # Train/Test split
 Ntrain = 25
@@ -76,8 +77,8 @@ xtrainlist, vtrainlist = corrupt_data(emg[:, :Ntrain],
                                       timevec,
                                       nmissingin=200,
                                       nmissingout=200,
-                                      noisein=0.05,
-                                      noiseout=0.1)
+                                      noisein=0.03,
+                                      noiseout=0.08)
 
 # Plot examples of data
 inds = [1, 3]
@@ -101,12 +102,13 @@ Vtest = spatiotemp.LocObsSet(vtest)
 
 # Test for bandwidth parameter
 # See if our input smoothing has the means to represent well the input functions
-Dsmoothing = 300
-sigmasmoothing = 45
-musmoothing = 0.1
-rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
-testridge = rffridge.RFFRidge(musmoothing, rffsx)
-i = 6
+musmoothing = 1
+mexhats = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec[0], timevec[-1], 20), np.linspace(0.01, 0.1, 10))
+# lspace = np.linspace(0, 0.69, 501)
+# plt.figure()
+# plt.plot(lspace, [mexhats.atom(0.3, 0.01, t) for t in lspace])
+testridge = expregs.ExpandedRidge(musmoothing, mexhats)
+i = 3
 testridge.fit(Xtrain["x"][i], Xtrain["y"][i])
 pred = testridge.predict(Xtrain["x"][i])
 plt.figure()
@@ -116,19 +118,16 @@ plt.legend()
 
 
 # Kernels
-sigmarff = 45
-D = 300
-kers = kernels.GaussianFuncKernel(sigma=3, rffeats=rffsx, mu=musmoothing)
+kers = kernels.GaussianFuncKernel(sigma=1, funcdict=mexhats, mu=musmoothing)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
 plt.imshow(Ks)
-rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
-test = rffs.eval(Vtrain["x"][0])
-plt.imshow(test.dot(test.T))
 
+
+mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec[0], timevec[-1], 10), np.linspace(0.02, 0.1, 10))
 # Test for bandwidth parameter
 # To see if our output dictionary has the means to approximate well the output functions
-testridge = rffridge.RFFRidge(0.1, rffs)
-i = 6
+testridge = expregs.ExpandedRidge(0.1, mexhatsout)
+i = 4
 testridge.fit(Vtrain["x"][i], Vtrain["y"][i])
 pred = testridge.predict(timevec.reshape((501, 1)))
 plt.figure()
@@ -141,9 +140,9 @@ plt.legend()
 # Fit
 # Build regressor
 l2 = losses.L2Loss()
-lamb = 0.001
+lamb = 0.01
 mu = 0.01
-reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=rffs)
+reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=mexhatsout)
 
 # Fit regressor
 solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
@@ -151,7 +150,7 @@ solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
 # Predict
 
 pred = reg.predict(Xtest, timevec.reshape((501, 1)))
-i = 3
+i = 1
 
 # Pred on test set
 plt.figure()
@@ -161,7 +160,7 @@ plt.title("Example of fitting on test set")
 plt.legend()
 
 pred = reg.predict(Xtrain, timevec.reshape((501, 1)))
-i = 7
+i = 3
 # Pred on train set
 plt.figure()
 plt.plot(timevec.flatten(), pred[i, :], label="predicted")

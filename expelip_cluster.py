@@ -104,5 +104,29 @@ for i in range(len(lamb_grid)):
 with open(os.getcwd() + "/tuning.pkl", "wb") as outp:
     pickle.dump((scores, regressors), outp)
 
-# with open(os.getcwd() + "/tuning.pkl", "rb") as inp:
-#     scores, regressors = pickle.load(inp)
+with open(os.getcwd() + "/tuning.pkl", "rb") as inp:
+    scores, regressors = pickle.load(inp)
+
+i=2
+j=3
+reg = regressors[i][j]
+pred = reg.predict(Xtest, timevec.reshape((501, 1)))
+i = 3
+
+import matplotlib.pyplot as plt
+# Pred on test set
+plt.figure()
+plt.plot(timevec.flatten(), pred[i, :], label="predicted")
+plt.plot(timevec.flatten(), Vtest["y"][i], label="real")
+plt.title("Example of fitting on test set")
+plt.legend()
+
+pred = reg.predict(Xtrain, timevec.reshape((501, 1)))
+i = 1
+# Pred on train set
+plt.figure()
+plt.plot(timevec.flatten(), pred[i, :], label="predicted")
+plt.scatter(Vtrain["x"][i], Vtrain["y"][i], label="real")
+plt.title("Example of fitting on test set")
+plt.legend()
+
