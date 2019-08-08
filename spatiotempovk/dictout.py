@@ -45,9 +45,15 @@ class FuncInDictOut:
         for t in range(T):
             for m in range(Ls[t]):
                 tm = sum(Ls[:t]) + m
-                phi = np.expand_dims(self.funcdic.eval(v[tm, :]), axis=0)
-                k = phi.T.dot(np.expand_dims(Ks[t], axis=0))
-                xi_prime += (1 / Ls[t]) * k * self.loss.prime(w[tm], Ks[t].T.dot(C.T).dot(phi.flatten()))
+                # phi = np.expand_dims(self.funcdic.eval(v[tm, :]), axis=0)
+                try:
+                    phi = self.funcdic.eval(v[tm, :])
+                    k = phi.T.dot(np.expand_dims(Ks[t], axis=0))
+                    xi_prime += (1 / Ls[t]) * k * self.loss.prime(w[tm], Ks[t].T.dot(C.T).dot(phi.flatten()))
+                except ValueError:
+                    phi = np.expand_dims(self.funcdic.eval(v[tm, :]), axis=0)
+                    k = phi.T.dot(np.expand_dims(Ks[t], axis=0))
+                    xi_prime += (1 / Ls[t]) * k * self.loss.prime(w[tm], Ks[t].T.dot(C.T).dot(phi.flatten()))
         if flatind:
             return (1 / T) * xi_prime.flatten()
         else:

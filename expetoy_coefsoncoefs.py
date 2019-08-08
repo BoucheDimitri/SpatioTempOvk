@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import importlib
 import pandas as pd
 import syntheticdata.funcs1d as funcs1d
-import functools
+import pickle
 import os
 
 import spatiotempovk.spatiotempdata as spatiotemp
@@ -36,65 +36,11 @@ importlib.reload(funcdicts)
 importlib.reload(coefsoncoefs)
 
 
-def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, noiseout):
-    xlist_corrupt = []
-    vlist_corrupt = []
-    for i in range(xarray.shape[1]):
-        nx = xarray.shape[0] - nmissingin
-        nv = varray.shape[0] - nmissingout
-        indsx = np.random.choice(xarray.shape[0], nx, replace=False)
-        indsx.sort()
-        indsv = np.random.choice(varray.shape[0], nv, replace=False)
-        indsv.sort()
-        noisex = np.random.normal(0, noisein, nx)
-        noisev = np.random.normal(0, noiseout, nv)
-        xlist_corrupt.append((timevec[indsx].reshape((nx, 1)), (xarray[indsx, i] + noisex).reshape((nx, 1))))
-        vlist_corrupt.append((timevec[indsv].reshape((nv, 1)), (varray[indsv, i] + noisev).reshape((nv, 1))))
-    return xlist_corrupt, vlist_corrupt
 
+# Or load dataset
+with open(os.getcwd() + "/dumps/datasets.pkl", "rb") as i:
+    Xtrain, Vtrain, Xtest, Vtest = pickle.load(i)
 
-
-
-
-
-# ################### LOAD THE DATA ####################################################################################
-path = os.getcwd() + "/datalip/"
-emg = pd.read_csv(path + "EMG.csv", header=None).values
-lipacc = pd.read_csv(path + "LipAcc.csv", header=None).values
-
-# Plot data
-plt.figure()
-for i in range(32):
-    plt.plot(emg[:, i])
-
-# Train/Test split
-Ntrain = 25
-Ntest = 32 - Ntrain
-
-# Corrupt the training data
-timevec = np.linspace(0, 0.69, 501)
-xtrainlist, vtrainlist = corrupt_data(emg[:, :Ntrain],
-                                      lipacc[:, :Ntrain],
-                                      timevec,
-                                      nmissingin=0,
-                                      nmissingout=0,
-                                      noisein=0,
-                                      noiseout=0)
-
-# Plot examples of data
-inds = [1, 3]
-fig, ax = plt.subplots(2)
-for i in inds:
-    ax[0].scatter(xtrainlist[i][0], xtrainlist[i][1])
-    ax[1].scatter(vtrainlist[i][0], vtrainlist[i][1])
-
-# Put dat in spatio-temporal format
-Xtrain = spatiotemp.LocObsSet(xtrainlist)
-Vtrain = spatiotemp.LocObsSet(vtrainlist)
-xtest = [(timevec.reshape((501, 1)), emg[:, i].reshape((501, 1))) for i in range(Ntrain, 32)]
-vtest = [(timevec.reshape((501, 1)), lipacc[:, i].reshape((501, 1))) for i in range(Ntrain, 32)]
-Xtest = spatiotemp.LocObsSet(xtest)
-Vtest = spatiotemp.LocObsSet(vtest)
 
 
 # plt.figure()
@@ -103,12 +49,12 @@ Vtest = spatiotemp.LocObsSet(vtest)
 
 # Test for bandwidth parameter
 # See if our input smoothing has the means to represent well the input functions
-Dsmoothing = 300
-sigmasmoothing = 45
+Dsmoothing = 10
+sigmasmoothing = 10
 musmoothing = 0.1
 rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
 testridge = rffridge.RFFRidge(musmoothing, rffsx)
-i = 6
+i = 0
 testridge.fit(Xtrain["x"][i], Xtrain["y"][i])
 pred = testridge.predict(Xtrain["x"][i])
 plt.figure()
@@ -118,33 +64,34 @@ plt.legend()
 
 
 # Kernels
-sigmarff = 45
-D = 300
-# kers = kernels.GaussianFuncKernel(sigma=3, rffeats=rffsx, mu=musmoothing)
-kers = kernels.GaussianSameLoc(sigma=10)
+sigmarff = 10
+D = 10
+rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
+kers = kernels.GaussianFuncKernel(sigma=5, funcdict=rffs, mu=musmoothing)
+# kers = kernels.GaussianSameLoc(sigma=10)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
 plt.imshow(Ks)
-rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
 test = rffs.eval(Vtrain["x"][0])
 plt.imshow(test.dot(test.T))
 
 # Test for bandwidth parameter
 # To see if our output dictionary has the means to approximate well the output functions
-testridge = rffridge.RFFRidge(0.1, rffs)
-i = 6
+muout = 0.1
+testridge = rffridge.RFFRidge(muout, rffs)
+i = 3
 testridge.fit(Vtrain["x"][i], Vtrain["y"][i])
-pred = testridge.predict(timevec.reshape((501, 1)))
+pred = testridge.predict(Vtest["x"][i])
 plt.figure()
-plt.plot(timevec, pred, label="predicted")
+plt.plot(Vtest["x"][i], pred, label="predicted")
 plt.plot(Vtrain["x"][i], Vtrain["y"][i], label="real")
 plt.legend()
 
-cc = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), rffsx, 0.1, rffs, 0.1, 0)
+cc = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=5), rffsx, musmoothing, rffs, muout, 0)
 cc.fit(Xtrain, Vtrain)
-pred = cc.predict(Xtest, timevec.reshape((501, 1)))
+pred = cc.predict(Xtest, Vtest["x"][i])
 plt.figure()
-plt.plot(timevec, pred[0])
-plt.plot(timevec, Vtest["y"][0])
+plt.plot(Vtest["x"][i], pred[0])
+plt.plot(Vtest["x"][i], Vtest["y"][0])
 
 # Fit
 # Build regressor
