@@ -2,7 +2,6 @@ import numpy as np
 from smoothing import expandedridgesmoother as expridgesmoother
 from sklearn.kernel_ridge import KernelRidge
 from smoothing import parametrized_func as param_func
-from ovkridge import ovkridge
 
 
 class CoefsOnCoefs:
