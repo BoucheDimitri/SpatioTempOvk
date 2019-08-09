@@ -37,33 +37,43 @@ def mse_score(pred, true):
     return ((pred - true) ** 2).sum(axis=1).mean()
 
 
-# Load the data
 path = os.getcwd() + "/datalip/"
-emg = pd.read_csv(path + "EMG.csv", header=None).values
-lipacc = pd.read_csv(path + "LipAcc.csv", header=None).values
+np.random.seed(0)
+shuffle_inds = np.random.choice(32, 32, replace=False)
+emg = pd.read_csv(path + "EMGmatlag.csv", header=None).values[:, shuffle_inds]
+lipacc = pd.read_csv(path + "lipmatlag.csv", header=None).values[:, shuffle_inds]
+timevec = pd.read_csv(path + "tfine.csv", header=None).values
+# lipaccmean = lipacc.mean(axis=1).reshape((641, 1))
+# lipaccstd = lipacc.std(axis=1).reshape((641, 1))
+# emgmean = emg.mean(axis=1).reshape((641, 1))
+# # centered_lipacc = (lipacc - lipaccmean)/lipaccstd
+# centered_lipacc = (lipacc - lipaccmean)
+# centered_emg = emg - emgmean
+
+# with open(os.getcwd() + "/shuffle.pkl", "rb") as inp:
+#     shuffle_inds = pickle.load(inp)
 
 # Train/Test split
 Ntrain = 25
 Ntest = 32 - Ntrain
 
 # Corrupt the training data
-timevec = np.linspace(0, 0.69, 501)
 xtrainlist, vtrainlist = corrupt_data(emg[:, :Ntrain],
                                       lipacc[:, :Ntrain],
                                       timevec,
                                       nmissingin=200,
                                       nmissingout=200,
-                                      noisein=0.05,
-                                      noiseout=0.1)
+                                      noisein=0.03,
+                                      noiseout=0.08)
+
 
 # Put dat in spatio-temporal format
 Xtrain = spatiotemp.LocObsSet(xtrainlist)
 Vtrain = spatiotemp.LocObsSet(vtrainlist)
-xtest = [(timevec.reshape((501, 1)), emg[:, i].reshape((501, 1))) for i in range(Ntrain, 32)]
-vtest = [(timevec.reshape((501, 1)), lipacc[:, i].reshape((501, 1))) for i in range(Ntrain, 32)]
+xtest = [(timevec, emg[:, i].reshape((641, 1))) for i in range(Ntrain, 32)]
+vtest = [(timevec, lipacc[:, i].reshape((641, 1))) for i in range(Ntrain, 32)]
 Xtest = spatiotemp.LocObsSet(xtest)
 Vtest = spatiotemp.LocObsSet(vtest)
-
 
 # plt.figure()
 # for i in range(32):
@@ -79,13 +89,13 @@ rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
 # Kernels
 sigmarff = 45
 D = 300
-kers = kernels.GaussianFuncKernel(sigma=3, rffeats=rffsx, mu=musmoothing)
+kers = kernels.GaussianFuncKernel(sigma=3, funcdict=rffsx, mu=musmoothing)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
 rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
 
 
-mu_grid = [0.0001, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]
-lamb_grid = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1]
+mu_grid = np.linspace(0.001, 0.1, 30)
+lamb_grid = np.linspace(0.0001, 0.1, 40)
 l2 = losses.L2Loss()
 
 scores = np.zeros((len(lamb_grid), len(mu_grid)))
@@ -96,37 +106,37 @@ for i in range(len(lamb_grid)):
     for j in range(len(mu_grid)):
         reg = dictout.FuncInDictOut(loss=l2, mu=mu_grid[j], lamb=lamb_grid[i], kers=kers, funcdic=rffs)
         solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
-        pred = reg.predict(Xtest, timevec.reshape((501, 1)))
+        pred = reg.predict(Xtest, timevec)
         scores[i, j] = mse_score(pred, np.squeeze(np.array(Vtest["y"]), axis=2))
         regressors[i].append(reg)
         print("lamb = " + str(lamb_grid[i]) + " and mu = " + str(mu_grid[j]))
 
-with open(os.getcwd() + "/tuning.pkl", "wb") as outp:
+with open(os.getcwd() + "/tuning_rff_funker.pkl", "wb") as outp:
     pickle.dump((scores, regressors), outp)
-
-with open(os.getcwd() + "/tuning.pkl", "rb") as inp:
-    scores, regressors = pickle.load(inp)
-
-i=2
-j=3
-reg = regressors[i][j]
-pred = reg.predict(Xtest, timevec.reshape((501, 1)))
-i = 3
-
-import matplotlib.pyplot as plt
-# Pred on test set
-plt.figure()
-plt.plot(timevec.flatten(), pred[i, :], label="predicted")
-plt.plot(timevec.flatten(), Vtest["y"][i], label="real")
-plt.title("Example of fitting on test set")
-plt.legend()
-
-pred = reg.predict(Xtrain, timevec.reshape((501, 1)))
-i = 1
-# Pred on train set
-plt.figure()
-plt.plot(timevec.flatten(), pred[i, :], label="predicted")
-plt.scatter(Vtrain["x"][i], Vtrain["y"][i], label="real")
-plt.title("Example of fitting on test set")
-plt.legend()
-
+#
+# with open(os.getcwd() + "/tuning.pkl", "rb") as inp:
+#     scores, regressors = pickle.load(inp)
+#
+# i=2
+# j=3
+# reg = regressors[i][j]
+# pred = reg.predict(Xtest, timevec.reshape((501, 1)))
+# i = 3
+#
+# import matplotlib.pyplot as plt
+# # Pred on test set
+# plt.figure()
+# plt.plot(timevec.flatten(), pred[i, :], label="predicted")
+# plt.plot(timevec.flatten(), Vtest["y"][i], label="real")
+# plt.title("Example of fitting on test set")
+# plt.legend()
+#
+# pred = reg.predict(Xtrain, timevec.reshape((501, 1)))
+# i = 1
+# # Pred on train set
+# plt.figure()
+# plt.plot(timevec.flatten(), pred[i, :], label="predicted")
+# plt.scatter(Vtrain["x"][i], Vtrain["y"][i], label="real")
+# plt.title("Example of fitting on test set")
+# plt.legend()
+#
