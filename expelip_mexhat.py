@@ -58,8 +58,21 @@ def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, nois
 # ################### LOAD THE DATA ####################################################################################
 path = os.getcwd() + "/datalip/"
 shuffle_inds = np.random.choice(32, 32, replace=False)
-emg = pd.read_csv(path + "EMG.csv", header=None).values[:, shuffle_inds]
-lipacc = pd.read_csv(path + "LipAcc.csv", header=None).values[:, shuffle_inds]
+emg = pd.read_csv(path + "EMGmatlag.csv", header=None).values[:, shuffle_inds]
+lipacc = pd.read_csv(path + "lipmatlag.csv", header=None).values[:, shuffle_inds]
+timevec = pd.read_csv(path + "tfine.csv", header=None).values
+lipaccmean = lipacc.mean(axis=1).reshape((641, 1))
+lipaccstd = lipacc.std(axis=1).reshape((641, 1))
+emgmean = emg.mean(axis=1).reshape((641, 1))
+# centered_lipacc = (lipacc - lipaccmean)/lipaccstd
+centered_lipacc = (lipacc - lipaccmean)
+centered_emg = emg - emgmean
+
+
+# Plot data
+plt.figure()
+for i in range(32):
+    plt.plot(centered_lipacc[:, i])
 
 # Plot data
 plt.figure()
@@ -71,7 +84,6 @@ Ntrain = 25
 Ntest = 32 - Ntrain
 
 # Corrupt the training data
-timevec = np.linspace(0, 0.69, 501)
 xtrainlist, vtrainlist = corrupt_data(emg[:, :Ntrain],
                                       lipacc[:, :Ntrain],
                                       timevec,
@@ -90,8 +102,8 @@ for i in inds:
 # Put dat in spatio-temporal format
 Xtrain = spatiotemp.LocObsSet(xtrainlist)
 Vtrain = spatiotemp.LocObsSet(vtrainlist)
-xtest = [(timevec.reshape((501, 1)), emg[:, i].reshape((501, 1))) for i in range(Ntrain, 32)]
-vtest = [(timevec.reshape((501, 1)), lipacc[:, i].reshape((501, 1))) for i in range(Ntrain, 32)]
+xtest = [(timevec.reshape((641, 1)), emg[:, i].reshape((641, 1))) for i in range(Ntrain, 32)]
+vtest = [(timevec.reshape((641, 1)), lipacc[:, i].reshape((641, 1))) for i in range(Ntrain, 32)]
 Xtest = spatiotemp.LocObsSet(xtest)
 Vtest = spatiotemp.LocObsSet(vtest)
 
@@ -118,8 +130,9 @@ plt.legend()
 
 
 # Kernels
-kers = kernels.GaussianFuncKernel(sigma=1, funcdict=mexhats, mu=musmoothing)
+kers = kernels.GaussianFuncKernel(sigma=2, funcdict=mexhats, mu=musmoothing)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
+plt.figure()
 plt.imshow(Ks)
 
 
@@ -129,7 +142,7 @@ mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec
 testridge = expregs.ExpandedRidge(0.1, mexhatsout)
 i = 4
 testridge.fit(Vtrain["x"][i], Vtrain["y"][i])
-pred = testridge.predict(timevec.reshape((501, 1)))
+pred = testridge.predict(timevec)
 plt.figure()
 plt.plot(timevec, pred, label="predicted")
 plt.plot(Vtrain["x"][i], Vtrain["y"][i], label="real")
@@ -140,8 +153,8 @@ plt.legend()
 # Fit
 # Build regressor
 l2 = losses.L2Loss()
-lamb = 0.01
-mu = 0.01
+lamb = 0.001
+mu = 0.06
 reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=mexhatsout)
 
 # Fit regressor
@@ -149,8 +162,8 @@ solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
 
 # Predict
 
-pred = reg.predict(Xtest, timevec.reshape((501, 1)))
-i = 1
+pred = reg.predict(Xtest,timevec)
+i = 4
 
 # Pred on test set
 plt.figure()
@@ -159,8 +172,8 @@ plt.plot(timevec.flatten(), Vtest["y"][i], label="real")
 plt.title("Example of fitting on test set")
 plt.legend()
 
-pred = reg.predict(Xtrain, timevec.reshape((501, 1)))
-i = 3
+pred = reg.predict(Xtrain, timevec)
+i = 6
 # Pred on train set
 plt.figure()
 plt.plot(timevec.flatten(), pred[i, :], label="predicted")
