@@ -9,8 +9,10 @@ class ExpRidgeSmoother(smoother.Smoother):
         super(ExpRidgeSmoother, self).__init__()
         self.mu = mu
         self.funcdict = funcdict
+        self.ridges = []
 
     def __call__(self, X, Y):
+        self.ridges = []
         nprobs = len(X)
         if len(Y) != nprobs:
             raise ValueError("Number of problems for input ({}) and target ({}) do not match".format(nprobs, len(Y)))
@@ -19,5 +21,6 @@ class ExpRidgeSmoother(smoother.Smoother):
             ridge = expridge.ExpandedRidge(self.mu, self.funcdict)
             ridge.fit(X[t], Y[t])
             w[t, :] = ridge.w.copy()
+            self.ridges.append(ridge)
         return w, self.funcdict.features_basis()
 
