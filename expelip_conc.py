@@ -102,7 +102,7 @@ Vtest = spatiotemp.LocObsSet(vtest)
 # See if our input smoothing has the means to represent well the input functions
 Dsmoothing = 300
 sigmasmoothing = 45
-musmoothing = 0.1
+musmoothing = 0.05
 rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
 testridge = rffridge.RFFRidge(musmoothing, rffsx)
 i = 6
@@ -118,16 +118,18 @@ plt.legend()
 sigmarff = 45
 D = 300
 # kers = kernels.GaussianFuncKernel(sigma=3, rffeats=rffsx, mu=musmoothing)
-kers = kernels.GaussianSameLoc(sigma=10)
+kers = kernels.GaussianFuncKernel(sigma=3, funcdict=rffsx, mu=musmoothing)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
+plt.figure()
 plt.imshow(Ks)
 rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
-test = rffs.eval(Vtrain["x"][0])
+test = rffs.eval(Vtest["x"][0])
 plt.imshow(test.dot(test.T))
 
 # Test for bandwidth parameter
 # To see if our output dictionary has the means to approximate well the output functions
-testridge = rffridge.RFFRidge(0.1, rffs)
+muout = 0.1
+testridge = rffridge.RFFRidge(muout, rffs)
 i = 6
 testridge.fit(Vtrain["x"][i], Vtrain["y"][i])
 pred = testridge.predict(timevec.reshape((501, 1)))
@@ -136,28 +138,19 @@ plt.plot(timevec, pred, label="predicted")
 plt.plot(Vtrain["x"][i], Vtrain["y"][i], label="real")
 plt.legend()
 
-cc = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), rffsx, 0.1, rffs, 0.1, 0)
-cc.fit(Xtrain, Vtrain)
-pred = cc.predict(Xtest, timevec.reshape((501, 1)))
-plt.figure()
-plt.plot(timevec, pred[0])
-plt.plot(timevec, Vtest["y"][0])
-
 # Fit
 # Build regressor
 l2 = losses.L2Loss()
 lamb = 0.001
-mu = 0.1
-mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec[0], timevec[-1], 10), np.linspace(0.02, 0.1, 10))
-reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=mexhatsout)
+reg = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), rffsx, musmoothing, rffs, muout, lamb)
 
 # Fit regressor
-solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
+reg.fit(Xtrain, Vtrain)
 
 # Predict
 
-pred = reg.predict(Xtest, timevec.reshape((501, 1)))
-i = 5
+pred = reg.predict(Xtest, timevec)
+i = 4
 
 # Pred on test set
 plt.figure()

@@ -20,6 +20,7 @@ import spatiotempovk.approximate as approxsamponfunc
 import basisexpansion.funcdicts as funcdicts
 import basisexpansion.expandedregs as expridge
 import spatiotempovk.coefsoncoefs as coefsoncoefs
+import basisexpansion.expandedregs as expregs
 importlib.reload(repmat)
 importlib.reload(spatiotemp)
 importlib.reload(kernels)
@@ -49,7 +50,7 @@ with open(os.getcwd() + "/dumps/datasets.pkl", "rb") as i:
 
 # Test for bandwidth parameter
 # See if our input smoothing has the means to represent well the input functions
-Dsmoothing = 10
+Dsmoothing = 50
 sigmasmoothing = 10
 musmoothing = 0.1
 rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
@@ -65,7 +66,7 @@ plt.legend()
 
 # Kernels
 sigmarff = 10
-D = 10
+D = 50
 rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
 kers = kernels.GaussianFuncKernel(sigma=5, funcdict=rffs, mu=musmoothing)
 # kers = kernels.GaussianSameLoc(sigma=10)
@@ -77,14 +78,17 @@ plt.imshow(test.dot(test.T))
 # Test for bandwidth parameter
 # To see if our output dictionary has the means to approximate well the output functions
 muout = 0.1
-testridge = rffridge.RFFRidge(muout, rffs)
-i = 3
+# testridge = rffridge.RFFRidge(muout, rffs)
+testridge = expregs.ExpandedRidge(muout, rffs)
+i = 5
 testridge.fit(Vtrain["x"][i], Vtrain["y"][i])
 pred = testridge.predict(Vtest["x"][i])
 plt.figure()
 plt.plot(Vtest["x"][i], pred, label="predicted")
 plt.plot(Vtrain["x"][i], Vtrain["y"][i], label="real")
 plt.legend()
+testridge.w
+
 
 cc = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=5), rffsx, musmoothing, rffs, muout, 0)
 cc.fit(Xtrain, Vtrain)
@@ -92,6 +96,13 @@ pred = cc.predict(Xtest, Vtest["x"][i])
 plt.figure()
 plt.plot(Vtest["x"][i], pred[0])
 plt.plot(Vtest["x"][i], Vtest["y"][0])
+
+i=2
+outfuncs = [param_func.ParametrizedFunc(wout[i], rffs.features_basis()) for i in range(wout.shape[0])]
+outp = [outfunc(Vtest["x"][i]) for outfunc in outfuncs]
+return np.array(outp)
+
+cc.kernelridges[0]
 
 # Fit
 # Build regressor

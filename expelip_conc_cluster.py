@@ -1,38 +1,20 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import importlib
 import pandas as pd
-import syntheticdata.funcs1d as funcs1d
-import functools
 import os
+import pickle
 
 import spatiotempovk.spatiotempdata as spatiotemp
 import spatiotempovk.kernels as kernels
 import spatiotempovk.losses as losses
-import spatiotempovk.regularizers as regularizers
-import spatiotempovk.regressors as regressors
-import algebra.repeated_matrix as repmat
-import smoothing.representer as repsmooth
-import smoothing.parametrized_func as param_func
 import spatiotempovk.dictout as dictout
 import approxkernelridge.rffridge as rffridge
-import spatiotempovk.approximate as approxsamponfunc
-import basisexpansion.funcdicts as funcdicts
-import basisexpansion.expandedregs as expridge
 import spatiotempovk.coefsoncoefs as coefsoncoefs
-importlib.reload(repmat)
 importlib.reload(spatiotemp)
 importlib.reload(kernels)
 importlib.reload(losses)
-importlib.reload(regularizers)
-importlib.reload(regressors)
-importlib.reload(repsmooth)
-importlib.reload(param_func)
-importlib.reload(funcs1d)
-importlib.reload(approxsamponfunc)
 importlib.reload(dictout)
-importlib.reload(expridge)
-importlib.reload(funcdicts)
+importlib.reload(rffridge)
 importlib.reload(coefsoncoefs)
 
 
@@ -53,7 +35,8 @@ def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, nois
     return xlist_corrupt, vlist_corrupt
 
 
-
+def mse_score(pred, true):
+    return ((pred - true) ** 2).sum(axis=1).mean()
 
 
 path = os.getcwd() + "/datalip/"
@@ -102,75 +85,58 @@ Vtest = spatiotemp.LocObsSet(vtest)
 # See if our input smoothing has the means to represent well the input functions
 Dsmoothing = 300
 sigmasmoothing = 45
-musmoothing = 0.1
+musmoothing = 0.05
 rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
-testridge = rffridge.RFFRidge(musmoothing, rffsx)
-i = 6
-testridge.fit(Xtrain["x"][i], Xtrain["y"][i])
-pred = testridge.predict(Xtrain["x"][i])
-plt.figure()
-plt.plot(Xtrain["x"][i], pred, label="predicted")
-plt.plot(Xtrain["x"][i], Xtrain["y"][i], label="real")
-plt.legend()
-
 
 # Kernels
 sigmarff = 45
 D = 300
-# kers = kernels.GaussianFuncKernel(sigma=3, rffeats=rffsx, mu=musmoothing)
-kers = kernels.GaussianSameLoc(sigma=10)
+muout = 0.1
+kers = kernels.GaussianFuncKernel(sigma=3, funcdict=rffsx, mu=musmoothing)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
-plt.imshow(Ks)
 rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
-test = rffs.eval(Vtrain["x"][0])
-plt.imshow(test.dot(test.T))
 
-# Test for bandwidth parameter
-# To see if our output dictionary has the means to approximate well the output functions
-testridge = rffridge.RFFRidge(0.1, rffs)
-i = 6
-testridge.fit(Vtrain["x"][i], Vtrain["y"][i])
-pred = testridge.predict(timevec.reshape((501, 1)))
-plt.figure()
-plt.plot(timevec, pred, label="predicted")
-plt.plot(Vtrain["x"][i], Vtrain["y"][i], label="real")
-plt.legend()
 
-cc = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), rffsx, 0.1, rffs, 0.1, 0)
-cc.fit(Xtrain, Vtrain)
-pred = cc.predict(Xtest, timevec.reshape((501, 1)))
-plt.figure()
-plt.plot(timevec, pred[0])
-plt.plot(timevec, Vtest["y"][0])
-
-# Fit
-# Build regressor
+lamb_grid = np.linspace(0.0001, 0.1, 50)
 l2 = losses.L2Loss()
-lamb = 0.001
-mu = 0.1
-mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec[0], timevec[-1], 10), np.linspace(0.02, 0.1, 10))
-reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=mexhatsout)
 
-# Fit regressor
-solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
+scores = np.zeros((len(lamb_grid)))
+regressors = []
 
-# Predict
+for i in range(len(lamb_grid)):
+    reg = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), rffsx, musmoothing, rffs, muout, lamb_grid[i])
+    reg.fit(Xtrain, Vtrain)
+    pred = reg.predict(Xtest, timevec)
+    scores[i] = mse_score(pred, np.squeeze(np.array(Vtest["y"]), axis=2))
+    regressors.append(reg)
+    print("lamb = " + str(lamb_grid[i]))
 
-pred = reg.predict(Xtest, timevec.reshape((501, 1)))
-i = 5
-
-# Pred on test set
-plt.figure()
-plt.plot(timevec.flatten(), pred[i, :], label="predicted")
-plt.plot(timevec.flatten(), Vtest["y"][i], label="real")
-plt.title("Example of fitting on test set")
-plt.legend()
-
-pred = reg.predict(Xtrain, timevec.reshape((501, 1)))
-i = 7
-# Pred on train set
-plt.figure()
-plt.plot(timevec.flatten(), pred[i, :], label="predicted")
-plt.scatter(Vtrain["x"][i], Vtrain["y"][i], label="real")
-plt.title("Example of fitting on test set")
-plt.legend()
+with open(os.getcwd() + "/tuning_rff_conc.pkl", "wb") as outp:
+    pickle.dump((scores, regressors), outp)
+#
+# with open(os.getcwd() + "/tuning.pkl", "rb") as inp:
+#     scores, regressors = pickle.load(inp)
+#
+# i=2
+# j=3
+# reg = regressors[i][j]
+# pred = reg.predict(Xtest, timevec.reshape((501, 1)))
+# i = 3
+#
+# import matplotlib.pyplot as plt
+# # Pred on test set
+# plt.figure()
+# plt.plot(timevec.flatten(), pred[i, :], label="predicted")
+# plt.plot(timevec.flatten(), Vtest["y"][i], label="real")
+# plt.title("Example of fitting on test set")
+# plt.legend()
+#
+# pred = reg.predict(Xtrain, timevec.reshape((501, 1)))
+# i = 1
+# # Pred on train set
+# plt.figure()
+# plt.plot(timevec.flatten(), pred[i, :], label="predicted")
+# plt.scatter(Vtrain["x"][i], Vtrain["y"][i], label="real")
+# plt.title("Example of fitting on test set")
+# plt.legend()
+#
