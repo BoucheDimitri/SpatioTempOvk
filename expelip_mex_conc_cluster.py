@@ -104,12 +104,14 @@ Ks = kers.compute_K(Xtrain["xy_tuple"])
 mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec[0], timevec[-1], 10), np.linspace(0.02, 0.1, 10))
 muout = 0.1
 
+# lamb_grid = np.linspace(0.0001, 0.1, 50)
 lamb_grid = np.linspace(0.0001, 0.1, 50)
 l2 = losses.L2Loss()
 
 scores = np.zeros((len(lamb_grid)))
 regressors = []
 
+# TODO: Issue with the output from ParametrizedFunc, "eval takes 2 positional arguments, 3 were given"
 for i in range(len(lamb_grid)):
     reg = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), mexhats, musmoothing, mexhatsout, muout, lamb_grid[i])
     reg.fit(Xtrain, Vtrain)

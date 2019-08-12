@@ -97,7 +97,8 @@ Ks = kers.compute_K(Xtrain["xy_tuple"])
 rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
 
 
-lamb_grid = np.linspace(0.0001, 0.1, 50)
+lamb_grid = np.linspace(0.05, 10, 100)
+# lamb_grid = np.linspace(0.0001, 0.1, 50)
 l2 = losses.L2Loss()
 
 scores = np.zeros((len(lamb_grid)))
@@ -111,7 +112,7 @@ for i in range(len(lamb_grid)):
     regressors.append(reg)
     print("lamb = " + str(lamb_grid[i]))
 
-with open(os.getcwd() + "/tuning_rff_conc.pkl", "wb") as outp:
+with open(os.getcwd() + "/tuning_rff_conc_bis.pkl", "wb") as outp:
     pickle.dump((scores, regressors), outp)
 #
 # with open(os.getcwd() + "/tuning.pkl", "rb") as inp:
