@@ -105,7 +105,7 @@ mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec
 muout = 0.1
 
 # lamb_grid = np.linspace(0.0001, 0.1, 50)
-lamb_grid = np.linspace(0.001, 100, 200)
+lamb_grid = np.linspace(0.001, 5, 400)
 l2 = losses.L2Loss()
 
 scores = np.zeros((len(lamb_grid)))
