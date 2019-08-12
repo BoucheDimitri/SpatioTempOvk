@@ -43,7 +43,10 @@ class CoefsOnCoefs:
         # for i in range(self.funcdictout.D):
         #     wout[:, i] = self.kernelridges[i].predict(win)
         wout = self.kernel_ridge.predict(win)
-        outfuncs = [param_func.ParametrizedFunc(wout[i], self.funcdictout.features_basis()) for i in range(wout.shape[0])]
-        print(Xnew.shape)
-        outp = [outfunc(Xnew) for outfunc in outfuncs]
-        return np.array(outp)
+        evals = self.funcdictout.eval(Xnew).T
+        return wout.dot(evals)
+        # return win, wout
+        # outfuncs = [param_func.ParametrizedFunc(wout[i], self.funcdictout.features_basis()) for i in range(wout.shape[0])]
+        # print(Xnew.shape)
+        # outp = [outfunc(Xnew) for outfunc in outfuncs]
+        # return np.array(outp)

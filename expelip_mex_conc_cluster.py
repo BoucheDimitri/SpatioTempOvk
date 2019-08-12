@@ -105,7 +105,7 @@ mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec
 muout = 0.1
 
 # lamb_grid = np.linspace(0.0001, 0.1, 50)
-lamb_grid = np.linspace(0.0001, 0.1, 50)
+lamb_grid = np.linspace(0.001, 100, 200)
 l2 = losses.L2Loss()
 
 scores = np.zeros((len(lamb_grid)))
@@ -122,15 +122,24 @@ for i in range(len(lamb_grid)):
 
 with open(os.getcwd() + "/tuning_mex_conc.pkl", "wb") as outp:
     pickle.dump((scores, regressors), outp)
+
+#
+# reg = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), mexhats, musmoothing, mexhatsout, muout, lamb_grid[0])
+# reg.fit(Xtrain, Vtrain)
+# pred = reg.predict(Xtest, timevec)
+
+
+
+
 # with open(os.getcwd() + "/tuning_mex.pkl", "rb") as inp:
 #     scores, regressors = pickle.load(inp)
 #
 #
-# pred = regressors[3][3].predict(Xtest, timevec.reshape((501, 1)))
+# # pred = regressors[3][3].predict(Xtest, timevec.reshape((501, 1)))
 # i = 3
-#
-# import matplotlib.pyplot as plt
-# # Pred on test set
+# #
+# # import matplotlib.pyplot as plt
+# # # Pred on test set
 # plt.figure()
 # plt.plot(timevec.flatten(), pred[i, :], label="predicted")
 # plt.plot(timevec.flatten(), Vtest["y"][i], label="real")
