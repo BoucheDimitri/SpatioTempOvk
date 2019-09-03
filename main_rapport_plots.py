@@ -31,8 +31,8 @@ importlib.reload(expregs)
 importlib.reload(funcdicts)
 
 # Plot parameters
-plt.rcParams.update({"font.size": 25})
-plt.rcParams.update({"lines.linewidth": 2})
+plt.rcParams.update({"font.size": 20})
+plt.rcParams.update({"lines.linewidth": 3})
 plt.rcParams.update({"lines.markersize": 10})
 
 
@@ -145,6 +145,38 @@ with open(os.getcwd() + "/tuning/tuning_rff_conc_bis.pkl", "rb") as inp:
 
 with open(os.getcwd() + "/tuning/tuning_mex_conc.pkl", "rb") as inp:
     scores_mex_conc, regressors_mex_conc = pickle.load(inp)
+
+
+mexintker = regressors_mex_intker[3][1]
+mexfunker = regressors_mex_funker[22][17]
+rffintker = regressors_rff_intker[0][13]
+rfffunker = regressors_rff_funker[0][27]
+rffconc = regressors_rff_conc[2]
+mexconc = regressors_mex_conc[8]
+regdict = {"FOD MEX Int": mexintker, "FOD MEX Coefs": mexfunker, "FOD RFF Int": rffintker,
+           "FOD RFF Coefs": rfffunker, "COD RFF": rffconc, "COD MEX": mexconc}
+
+preddict = {}
+for key, item in regdict.items():
+    preddict[key] = item.predict(Xtest, timevec)
+
+Nexamples = 4
+Nregressors = len(regdict)
+fig, ax = plt.subplots(nrows=Nexamples, ncols=Nregressors, sharey="row", sharex="col")
+start = 2
+for i in range(start, start + Nexamples):
+    j = 0
+    for key, item in preddict.items():
+        ax[i-start, j].plot(timevec.flatten(), item[i, :], label="predicted")
+        ax[i-start, j].plot(timevec.flatten(), Vtest["y"][i], label="real")
+        # if j == 0 and i == start:
+        #     ax[i-start, j].legend()
+        if i == start:
+            ax[i-start, j].set_title(key)
+        j += 1
+
+
+
 
 # np.unravel_index(scores_rff_funker.argmin(), scores.shape)
 
