@@ -14,6 +14,13 @@ class RandomFourierFeatures:
     def eval(self, X):
         return np.sqrt(2 / self.D) * np.cos(self.sigma * X.dot(self.w) + self.b)
 
+    def add_features(self, nfeatures):
+        wadd = np.random.normal(0, 1, (self.d, nfeatures))
+        badd = np.random.uniform(0, 2 * np.pi, (1, nfeatures))
+        self.w = np.concatenate((self.w, wadd), axis=1)
+        self.b = np.concatenate((self.b, badd), axis=1)
+        self.D = self.D + nfeatures
+
     def get_feature(self, i):
         return lambda x: np.sqrt(2 / self.D) * np.cos(self.sigma * self.w[:, i].dot(x) + self.b[:, i])
 

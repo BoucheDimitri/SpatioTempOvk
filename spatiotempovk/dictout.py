@@ -141,6 +141,10 @@ class FuncInDictOut:
         sol["record"] = record
         return sol
 
+    def predict_coeffs(self, Snew):
+        Ksnew = self.kers.compute_Knew(self.training_input["xy_tuple"], Snew["xy_tuple"])
+        return Ksnew.T.dot(self.C.T)
+
     def predict(self, Snew, Xnew):
         Ksnew = self.kers.compute_Knew(self.training_input["xy_tuple"], Snew["xy_tuple"])
         phis = self.funcdic.eval(Xnew)

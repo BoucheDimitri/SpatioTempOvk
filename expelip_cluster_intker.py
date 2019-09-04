@@ -111,7 +111,7 @@ for i in range(len(lamb_grid)):
         regressors[i].append(reg)
         print("lamb = " + str(lamb_grid[i]) + " and mu = " + str(mu_grid[j]))
 
-with open(os.getcwd() + "/tuning_rff_intker.pkl", "wb") as outp:
+with open(os.getcwd() + "/tuning_rff_intker_bis.pkl", "wb") as outp:
     pickle.dump((scores, regressors), outp)
 #
 # with open(os.getcwd() + "/tuning.pkl", "rb") as inp:

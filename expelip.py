@@ -105,7 +105,7 @@ sigmasmoothing = 45
 musmoothing = 0.1
 rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
 testridge = rffridge.RFFRidge(musmoothing, rffsx)
-i = 6
+i = 0
 testridge.fit(Xtrain["x"][i], Xtrain["y"][i])
 pred = testridge.predict(Xtrain["x"][i])
 plt.figure()
@@ -130,18 +130,18 @@ plt.imshow(test.dot(test.T))
 testridge = rffridge.RFFRidge(0.1, rffs)
 i = 6
 testridge.fit(Vtrain["x"][i], Vtrain["y"][i])
-pred = testridge.predict(timevec.reshape((501, 1)))
+pred = testridge.predict(timevec.reshape((641, 1)))
 plt.figure()
 plt.plot(timevec, pred, label="predicted")
 plt.plot(Vtrain["x"][i], Vtrain["y"][i], label="real")
 plt.legend()
 
-cc = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), rffsx, 0.1, rffs, 0.1, 0)
-cc.fit(Xtrain, Vtrain)
-pred = cc.predict(Xtest, timevec.reshape((501, 1)))
-plt.figure()
-plt.plot(timevec, pred[0])
-plt.plot(timevec, Vtest["y"][0])
+# cc = coefsoncoefs.CoefsOnCoefs(kernels.GaussianKernel(sigma=3), rffsx, 0.1, rffs, 0.1, 0)
+# cc.fit(Xtrain, Vtrain)
+# pred = cc.predict(Xtest, timevec.reshape((501, 1)))
+# plt.figure()
+# plt.plot(timevec, pred[0])
+# plt.plot(timevec, Vtest["y"][0])
 
 # Fit
 # Build regressor

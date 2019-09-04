@@ -37,15 +37,17 @@ def mse_score(pred, true):
     return ((pred - true) ** 2).sum(axis=1).mean()
 
 
-def ideal_smoothing_coefs(rffsmoothing, musmoothing, Vtest):
+def ideal_smoothing_mse(rffsmoothing, musmoothing, Vtest, predcoeffs):
     N = Vtest.get_T()
     ideal_coeffs = []
     for i in range(N):
         testridge = rffridge.RFFRidge(musmoothing, rffsmoothing)
         testridge.fit(Vtest["x"][i], Vtest["y"][i])
         ideal_coeffs.append(testridge.w)
-    return ideal_coeffs
+    ideal_coeffs = np.array(ideal_coeffs)
+    return ((ideal_coeffs - predcoeffs) ** 2).sum(axis=1).mean()
 
+# Load the data
 path = os.getcwd() + "/datalip/"
 np.random.seed(0)
 shuffle_inds = np.random.choice(32, 32, replace=False)
@@ -85,16 +87,49 @@ Xtest = spatiotemp.LocObsSet(xtest)
 Vtest = spatiotemp.LocObsSet(vtest)
 
 
-# Test for bandwidth parameter
-# See if our input smoothing has the means to represent well the input functions
+# Input smoothing parameters
 Dsmoothing = 300
 sigmasmoothing = 45
-musmoothing = 0.1
+musmoothing = 0.05
 rffsx = rffridge.RandomFourierFeatures(sigmasmoothing, Dsmoothing, d=1)
 
 # Kernels
 sigmarff = 45
 kers = kernels.GaussianFuncIntKernel(sigma=0.5, funcdict=rffsx, mu=musmoothing, timevec=timevec)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
-Dgrid = np.arange(1, 300, 10)
-rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
+
+# Dgrid = np.arange(1, 410, 10)
+Dgrid = [5, 150, 300]
+
+# Loss
+l2 = losses.L2Loss()
+
+# Regularization for the method
+mu = 0.04537931034482759
+lamb = 0.0001
+
+# Regularization used for ideal output smoothing
+musmoothingout = 0.05
+
+# D = 100
+# rffs = rffridge.RandomFourierFeatures(sigmarff, D, d=1)
+# reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=rffs)
+# solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
+
+regressors = []
+scores_coeffs = []
+scores = []
+
+for i in range(len(Dgrid)):
+    if i == 0:
+        rffs = rffridge.RandomFourierFeatures(sigmarff, Dgrid[i], d=1)
+    else:
+        rffs.add_features(Dgrid[i] - Dgrid[i-1])
+    reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=rffs)
+    solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
+    predcoeffs = reg.predict_coeffs(Xtest)
+    pred = reg.predict(Xtest, timevec)
+    scores.append(mse_score(pred, np.squeeze(np.array(Vtest["y"]), axis=2)))
+    scores_coeffs.append((1 / Dgrid[i]) * ideal_smoothing_mse(rffs, musmoothingout, Vtest, predcoeffs))
+    regressors.append(reg)
+    print(Dgrid[i])
