@@ -51,8 +51,17 @@ def mse_score(pred, true):
     return ((pred - true) ** 2).sum(axis=1).mean()
 
 
+def ideal_smoothing_mse(mexsmoothing, musmoothing, Vtest, predcoeffs):
+    N = Vtest.get_T()
+    ideal_coeffs = []
+    for i in range(N):
+        testridge = expregs.ExpandedRidge(musmoothing, mexsmoothing)
+        testridge.fit(Vtest["x"][i], Vtest["y"][i])
+        ideal_coeffs.append(testridge.w)
+    ideal_coeffs = np.array(ideal_coeffs)
+    return ((ideal_coeffs - predcoeffs) ** 2).sum(axis=1).mean()
 
-# ################### LOAD THE DATA ####################################################################################
+# Load the data
 path = os.getcwd() + "/datalip/"
 np.random.seed(0)
 shuffle_inds = np.random.choice(32, 32, replace=False)
@@ -73,24 +82,29 @@ timevec = pd.read_csv(path + "tfine.csv", header=None).values
 Ntrain = 25
 Ntest = 32 - Ntrain
 
+# Input noise params
+noisein = 0.03
+nmissingin = 200
+nmissingout = 200
+
 # Corrupt the training data
 xtrainlist, vtrainlist = corrupt_data(emg[:, :Ntrain],
                                       lipacc[:, :Ntrain],
                                       timevec,
-                                      nmissingin=200,
-                                      nmissingout=200,
-                                      noisein=0.03,
-                                      noiseout=0.08)
-
+                                      nmissingin=nmissingin,
+                                      nmissingout=nmissingout,
+                                      noisein=noisein,
+                                      noiseout=0)
 
 # Put dat in spatio-temporal format
 Xtrain = spatiotemp.LocObsSet(xtrainlist)
 Vtrain = spatiotemp.LocObsSet(vtrainlist)
+
+# Testing data (fixed)
 xtest = [(timevec, emg[:, i].reshape((641, 1))) for i in range(Ntrain, 32)]
 vtest = [(timevec, lipacc[:, i].reshape((641, 1))) for i in range(Ntrain, 32)]
 Xtest = spatiotemp.LocObsSet(xtest)
 Vtest = spatiotemp.LocObsSet(vtest)
-
 
 # Kernels
 musmoothing = 1
@@ -101,25 +115,41 @@ Ks = kers.compute_K(Xtrain["xy_tuple"])
 
 # output dict
 mexhatsout = funcdicts.MexHatDict((timevec[0], timevec[-1]), np.linspace(timevec[0], timevec[-1], 10), np.linspace(0.02, 0.1, 10))
+D = mexhatsout.D
 
-# mu_grid = np.linspace(0.001, 0.1, 20)
-# lamb_grid = np.linspace(0.001, 0.1, 20)
-mu_grid = np.linspace(0.001, 0.1, 30)
-lamb_grid = np.linspace(0.0001, 0.1, 40)
+# Loss
 l2 = losses.L2Loss()
 
-scores = np.zeros((len(lamb_grid), len(mu_grid)))
+noisegrid = [0.03, 0.08, 0.12]
+
+scores = []
+scores_coeffs = []
 regressors = []
 
-for i in range(len(lamb_grid)):
-    regressors.append([])
-    for j in range(len(mu_grid)):
-        reg = dictout.FuncInDictOut(loss=l2, mu=mu_grid[j], lamb=lamb_grid[i], kers=kers, funcdic=mexhatsout)
-        solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
-        pred = reg.predict(Xtest, timevec)
-        scores[i, j] = mse_score(pred, np.squeeze(np.array(Vtest["y"]), axis=2))
-        regressors[i].append(reg)
-        print("lamb = " + str(lamb_grid[i]) + " and mu = " + str(mu_grid[j]))
+musmoothingout = 0.1
+lamb = 0.0044
+mu = 0.0078
+# mu = 0.0044
+# lamb = 0.0078
 
-with open(os.getcwd() + "/tuning_mex_intker_bis.pkl", "wb") as outp:
-    pickle.dump((mu_grid, lamb_grid, scores, regressors), outp)
+for i in range(len(noisegrid)):
+    # Corrupt the training data
+    xtrainlist, vtrainlist = corrupt_data(emg[:, :Ntrain],
+                                          lipacc[:, :Ntrain],
+                                          timevec,
+                                          nmissingin=nmissingin,
+                                          nmissingout=nmissingout,
+                                          noisein=noisein,
+                                          noiseout=noisegrid[i])
+
+    # Put dat in spatio-temporal format
+    Xtrain = spatiotemp.LocObsSet(xtrainlist)
+    Vtrain = spatiotemp.LocObsSet(vtrainlist)
+    reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=mexhatsout)
+    solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
+    predcoeffs = reg.predict_coeffs(Xtest)
+    pred = reg.predict(Xtest, timevec)
+    scores.append(mse_score(pred, np.squeeze(np.array(Vtest["y"]), axis=2)))
+    scores_coeffs.append((1 / D) * ideal_smoothing_mse(mexhatsout, musmoothingout, Vtest, predcoeffs))
+    regressors.append(reg)
+    print(i)
