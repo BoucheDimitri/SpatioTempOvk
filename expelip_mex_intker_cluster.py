@@ -30,17 +30,21 @@ importlib.reload(expregs)
 importlib.reload(funcdicts)
 
 
-def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, noiseout):
+def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, noiseout, seed=0):
     xlist_corrupt = []
     vlist_corrupt = []
     for i in range(xarray.shape[1]):
         nx = xarray.shape[0] - nmissingin
         nv = varray.shape[0] - nmissingout
+        np.random.seed(seed)
         indsx = np.random.choice(xarray.shape[0], nx, replace=False)
         indsx.sort()
+        np.random.seed(seed)
         indsv = np.random.choice(varray.shape[0], nv, replace=False)
         indsv.sort()
+        np.random.seed(seed)
         noisex = np.random.normal(0, noisein, nx)
+        np.random.seed(seed)
         noisev = np.random.normal(0, noiseout, nv)
         xlist_corrupt.append((timevec[indsx].reshape((nx, 1)), (xarray[indsx, i] + noisex).reshape((nx, 1))))
         vlist_corrupt.append((timevec[indsv].reshape((nv, 1)), (varray[indsv, i] + noisev).reshape((nv, 1))))

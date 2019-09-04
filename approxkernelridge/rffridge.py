@@ -4,18 +4,23 @@ from sklearn.linear_model import Ridge
 
 class RandomFourierFeatures:
 
-    def __init__(self, sigma, D, d):
+    def __init__(self, sigma, D, d, seed=0):
         self.sigma = sigma
         self.D = D
         self.d = d
+        np.random.seed(seed)
         self.w = np.random.normal(0, 1, (self.d, self.D))
+        np.random.seed(seed)
         self.b = np.random.uniform(0, 2 * np.pi, (1, self.D))
+        self.seed = seed
 
     def eval(self, X):
         return np.sqrt(2 / self.D) * np.cos(self.sigma * X.dot(self.w) + self.b)
 
     def add_features(self, nfeatures):
+        np.random.seed(self.seed)
         wadd = np.random.normal(0, 1, (self.d, nfeatures))
+        np.random.seed(self.seed)
         badd = np.random.uniform(0, 2 * np.pi, (1, nfeatures))
         self.w = np.concatenate((self.w, wadd), axis=1)
         self.b = np.concatenate((self.b, badd), axis=1)
