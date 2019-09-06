@@ -136,3 +136,7 @@ for i in range(len(Dgrid)):
     scores_coeffs.append((1 / Dgrid[i]) * ideal_smoothing_mse(rffs, musmoothingout, Vtest, predcoeffs))
     regressors.append(reg)
     print(Dgrid[i])
+
+
+with open(os.getcwd() + "/dim_exp_fourier.pkl", "wb") as outp:
+    pickle.dump((scores, regressors), outp)

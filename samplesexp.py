@@ -152,3 +152,6 @@ for i in range(len(missinggrid)):
     scores_coeffs.append((1 / D) * ideal_smoothing_mse(mexhatsout, musmoothingout, Vtest, predcoeffs))
     regressors.append(reg)
     print(i)
+
+with open(os.getcwd() + "/samples_exp_mex.pkl", "wb") as outp:
+    pickle.dump((scores, regressors), outp)
