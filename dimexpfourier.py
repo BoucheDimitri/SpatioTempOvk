@@ -100,14 +100,13 @@ sigmarff = 45
 kers = kernels.GaussianFuncIntKernel(sigma=0.5, funcdict=rffsx, mu=musmoothing, timevec=timevec)
 Ks = kers.compute_K(Xtrain["xy_tuple"])
 
-# Dgrid = np.arange(1, 410, 10)
-Dgrid = [5, 150, 300]
+Dgrid = np.arange(1, 410, 10)
 
 # Loss
 l2 = losses.L2Loss()
 
 # Regularization for the method
-mu = 0.04537931034482759
+mu = 0.004414
 lamb = 0.0001
 
 # Regularization used for ideal output smoothing
@@ -139,4 +138,4 @@ for i in range(len(Dgrid)):
 
 
 with open(os.getcwd() + "/dim_exp_fourier.pkl", "wb") as outp:
-    pickle.dump((scores, regressors), outp)
+    pickle.dump((Dgrid, scores, regressors), outp)

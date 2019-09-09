@@ -37,21 +37,26 @@ plt.rcParams.update({"lines.markersize": 10})
 
 
 
-def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, noiseout):
+def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, noiseout, seed=0):
     xlist_corrupt = []
     vlist_corrupt = []
     for i in range(xarray.shape[1]):
         nx = xarray.shape[0] - nmissingin
         nv = varray.shape[0] - nmissingout
+        np.random.seed(seed)
         indsx = np.random.choice(xarray.shape[0], nx, replace=False)
         indsx.sort()
+        np.random.seed(seed)
         indsv = np.random.choice(varray.shape[0], nv, replace=False)
         indsv.sort()
+        np.random.seed(seed)
         noisex = np.random.normal(0, noisein, nx)
+        np.random.seed(seed)
         noisev = np.random.normal(0, noiseout, nv)
         xlist_corrupt.append((timevec[indsx].reshape((nx, 1)), (xarray[indsx, i] + noisex).reshape((nx, 1))))
         vlist_corrupt.append((timevec[indsv].reshape((nv, 1)), (varray[indsv, i] + noisev).reshape((nv, 1))))
     return xlist_corrupt, vlist_corrupt
+
 
 
 def mse_score(pred, true):
@@ -128,29 +133,34 @@ ax[1].set_title("Noisy downsampled Lip acceleration")
 
 
 
-with open(os.getcwd() + "/tuning/tuning_mex_intker_lag.pkl", "rb") as inp:
+with open(os.getcwd() + "/tuning/tuning_mex_intker_bis.pkl", "rb") as inp:
     mus, lambs, scores_mex_intker, regressors_mex_intker = pickle.load(inp)
+print(np.unravel_index(scores_mex_intker.argmin(), scores_mex_intker.shape))
 
-with open(os.getcwd() + "/tuning/tuning_mex_funker_lag.pkl", "rb") as inp:
+with open(os.getcwd() + "/tuning/tuning_mex_funker_bis.pkl", "rb") as inp:
     mus, lambs, scores_mex_funker, regressors_mex_funker = pickle.load(inp)
+print(np.unravel_index(scores_mex_funker.argmin(), scores_mex_funker.shape))
 
-with open(os.getcwd() + "/tuning/tuning_rff_funker.pkl", "rb") as inp:
+with open(os.getcwd() + "/tuning/tuning_rff_funker_bis.pkl", "rb") as inp:
     scores_rff_funker, regressors_rff_funker = pickle.load(inp)
+print(np.unravel_index(scores_rff_funker.argmin(), scores_rff_funker.shape))
 
-with open(os.getcwd() + "/tuning/tuning_rff_intker.pkl", "rb") as inp:
+with open(os.getcwd() + "/tuning/tuning_rff_intker_bis.pkl", "rb") as inp:
     scores_rff_intker, regressors_rff_intker = pickle.load(inp)
+print(np.unravel_index(scores_rff_intker.argmin(), scores_rff_intker.shape))
 
 with open(os.getcwd() + "/tuning/tuning_rff_conc_bis.pkl", "rb") as inp:
     scores_rff_conc, regressors_rff_conc = pickle.load(inp)
+np.argmin(scores_rff_conc)
 
-with open(os.getcwd() + "/tuning/tuning_mex_conc.pkl", "rb") as inp:
+with open(os.getcwd() + "/tuning/tuning_mex_conc_bis.pkl", "rb") as inp:
     scores_mex_conc, regressors_mex_conc = pickle.load(inp)
 
 
-mexintker = regressors_mex_intker[3][1]
-mexfunker = regressors_mex_funker[22][17]
-rffintker = regressors_rff_intker[0][13]
-rfffunker = regressors_rff_funker[0][27]
+mexintker = regressors_mex_intker[1][0]
+mexfunker = regressors_mex_funker[33][10]
+rffintker = regressors_rff_intker[0][10]
+rfffunker = regressors_rff_funker[0][10]
 rffconc = regressors_rff_conc[2]
 mexconc = regressors_mex_conc[8]
 regdict = {"FOD MEX Int": mexintker, "FOD MEX Coefs": mexfunker, "FOD RFF Int": rffintker,
