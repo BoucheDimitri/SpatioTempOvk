@@ -30,22 +30,25 @@ importlib.reload(expregs)
 importlib.reload(funcdicts)
 
 
-def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, noiseout):
+def corrupt_data(xarray, varray, timevec, nmissingin, nmissingout, noisein, noiseout, seed=0):
     xlist_corrupt = []
     vlist_corrupt = []
     for i in range(xarray.shape[1]):
         nx = xarray.shape[0] - nmissingin
         nv = varray.shape[0] - nmissingout
+        np.random.seed(seed)
         indsx = np.random.choice(xarray.shape[0], nx, replace=False)
         indsx.sort()
+        np.random.seed(seed)
         indsv = np.random.choice(varray.shape[0], nv, replace=False)
         indsv.sort()
+        np.random.seed(seed)
         noisex = np.random.normal(0, noisein, nx)
+        np.random.seed(seed)
         noisev = np.random.normal(0, noiseout, nv)
         xlist_corrupt.append((timevec[indsx].reshape((nx, 1)), (xarray[indsx, i] + noisex).reshape((nx, 1))))
         vlist_corrupt.append((timevec[indsv].reshape((nv, 1)), (varray[indsv, i] + noisev).reshape((nv, 1))))
     return xlist_corrupt, vlist_corrupt
-
 
 def mse_score(pred, true):
     return ((pred - true) ** 2).sum(axis=1).mean()
@@ -83,9 +86,9 @@ Ntrain = 25
 Ntest = 32 - Ntrain
 
 # Input noise params
-noisein = 0.03
-nmissingin = 200
-nmissingout = 200
+noisein = 0
+nmissingin = 0
+nmissingout = 0
 
 # Corrupt the training data
 xtrainlist, vtrainlist = corrupt_data(emg[:, :Ntrain],
@@ -120,15 +123,17 @@ D = mexhatsout.D
 # Loss
 l2 = losses.L2Loss()
 
-noisegrid = [0.03, 0.08, 0.12]
+# noisegrid = [0.03, 0.08, 0.12]
+
+noisegrid = np.linspace(0.001, 0.15, 50)
 
 scores = []
 scores_coeffs = []
 regressors = []
 
 musmoothingout = 0.1
-lamb = 0.0044
-mu = 0.0078
+lamb = 0.00266
+mu = 0.001
 # mu = 0.0044
 # lamb = 0.0078
 
@@ -146,6 +151,7 @@ for i in range(len(noisegrid)):
     Xtrain = spatiotemp.LocObsSet(xtrainlist)
     Vtrain = spatiotemp.LocObsSet(vtrainlist)
     reg = dictout.FuncInDictOut(loss=l2, mu=mu, lamb=lamb, kers=kers, funcdic=mexhatsout)
+    Ks = kers.compute_K(Xtrain["xy_tuple"])
     solu = reg.fit(Xtrain, Vtrain, Ks=Ks, tol=1e-4)
     predcoeffs = reg.predict_coeffs(Xtest)
     pred = reg.predict(Xtest, timevec)
@@ -155,4 +161,4 @@ for i in range(len(noisegrid)):
     print(i)
 
 with open(os.getcwd() + "/noise_exp_mex.pkl", "wb") as outp:
-    pickle.dump((scores, regressors), outp)
+    pickle.dump((noisegrid, scores, regressors), outp)
