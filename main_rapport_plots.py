@@ -136,25 +136,32 @@ ax[1].set_title("Noisy downsampled Lip acceleration")
 with open(os.getcwd() + "/tuning/tuning_mex_intker_bis.pkl", "rb") as inp:
     mus, lambs, scores_mex_intker, regressors_mex_intker = pickle.load(inp)
 print(np.unravel_index(scores_mex_intker.argmin(), scores_mex_intker.shape))
+print(scores_mex_intker.min()/7)
 
 with open(os.getcwd() + "/tuning/tuning_mex_funker_bis.pkl", "rb") as inp:
     mus, lambs, scores_mex_funker, regressors_mex_funker = pickle.load(inp)
 print(np.unravel_index(scores_mex_funker.argmin(), scores_mex_funker.shape))
+print(scores_mex_funker.min()/7)
 
 with open(os.getcwd() + "/tuning/tuning_rff_funker_bis.pkl", "rb") as inp:
     scores_rff_funker, regressors_rff_funker = pickle.load(inp)
 print(np.unravel_index(scores_rff_funker.argmin(), scores_rff_funker.shape))
+print(scores_rff_funker.min()/7)
 
 with open(os.getcwd() + "/tuning/tuning_rff_intker_bis.pkl", "rb") as inp:
     scores_rff_intker, regressors_rff_intker = pickle.load(inp)
 print(np.unravel_index(scores_rff_intker.argmin(), scores_rff_intker.shape))
+print(scores_rff_intker.min()/7)
 
 with open(os.getcwd() + "/tuning/tuning_rff_conc_bis.pkl", "rb") as inp:
     scores_rff_conc, regressors_rff_conc = pickle.load(inp)
 np.argmin(scores_rff_conc)
+print(scores_rff_conc.min()/7)
 
-with open(os.getcwd() + "/tuning/tuning_mex_conc_bis.pkl", "rb") as inp:
+with open(os.getcwd() + "/tuning/tuning_mexi_conc_bis.pkl", "rb") as inp:
     scores_mex_conc, regressors_mex_conc = pickle.load(inp)
+np.argmin(scores_mex_conc)
+print(scores_mex_conc.min()/7)
 
 
 mexintker = regressors_mex_intker[1][0]
@@ -208,3 +215,9 @@ plt.plot(timevec.flatten(), pred[i, :], label="predicted")
 plt.scatter(Vtrain["x"][i], Vtrain["y"][i], label="real")
 plt.title("Example of fitting on test set")
 plt.legend()
+
+
+
+
+with open(os.getcwd() + "/tuning/dim_exp_fourier.pkl", "rb") as inp:
+    mus, lambs, scores_mex_intker, regressors_mex_intker = pickle.load(inp)

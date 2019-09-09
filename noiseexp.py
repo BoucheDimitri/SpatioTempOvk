@@ -161,4 +161,4 @@ for i in range(len(noisegrid)):
     print(i)
 
 with open(os.getcwd() + "/noise_exp_mex.pkl", "wb") as outp:
-    pickle.dump((noisegrid, scores, regressors), outp)
+    pickle.dump((noisegrid, scores, scores_coeffs, regressors), outp)

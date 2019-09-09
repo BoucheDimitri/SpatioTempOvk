@@ -158,4 +158,4 @@ for i in range(len(nmissinggrid)):
     print(i)
 
 with open(os.getcwd() + "/samples_exp_mex.pkl", "wb") as outp:
-    pickle.dump((nmissinggrid, scores, regressors), outp)
+    pickle.dump((nmissinggrid, scores, scores_coeffs, regressors), outp)

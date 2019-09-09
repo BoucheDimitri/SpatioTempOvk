@@ -138,4 +138,4 @@ for i in range(len(Dgrid)):
 
 
 with open(os.getcwd() + "/dim_exp_fourier.pkl", "wb") as outp:
-    pickle.dump((Dgrid, scores, regressors), outp)
+    pickle.dump((Dgrid, scores, scores_coeffs, regressors), outp)
